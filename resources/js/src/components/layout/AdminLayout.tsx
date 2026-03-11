@@ -75,6 +75,11 @@ export function AdminLayout({
     icon: Bell
   },
   {
+    id: 'certificates',
+    label: 'Certificates',
+    icon: Building2 // reuse building icon or choose another
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: Settings
@@ -101,7 +106,9 @@ export function AdminLayout({
             <nav className="mt-5 flex-1 px-2 space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentPage === item.id || (item.id === 'courses' && currentPage === 'course-detail');
+                const isActive = currentPage === item.id
+                  || (item.id === 'courses' && currentPage === 'course-detail')
+                  || (item.id === 'certificates' && currentPage.startsWith('certificate'));
                 return (
                   <button
                     key={item.id}

@@ -167,6 +167,24 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'status', 'role:Admin'])->gr
     Route::get('/reports/export', [UserController::class, 'exportReport']);
     Route::get('/reports/analytics', [ReportController::class, 'analytics']);
 
+    // Certificates (admin) - returns JSON for SPA
+    Route::get('/certificates', function () {
+        $certs = \App\Models\Certificate::with(['user:id,fullname,email','course:id,title'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'certificate_data' => $c->certificate_data,
+                    'created_at' => $c->created_at,
+                    'user' => $c->user ? ['id' => $c->user->id, 'fullname' => $c->user->fullname, 'email' => $c->user->email] : null,
+                    'course' => $c->course ? ['id' => $c->course->id, 'title' => $c->course->title] : null,
+                ];
+            });
+
+        return response()->json($certs);
+    });
+
     // User Management
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store']);

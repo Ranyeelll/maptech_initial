@@ -15,13 +15,34 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::updateOrCreate(
+            ['email' => 'admin@maptech.com'],
+            [
+                'fullname' => 'Admin User',
+                'password' => 'password123',
+                'role' => 'admin',
+                'status' => 'Active',
+            ]
+        );
 
-User::factory()->create([
-    'fullname' => 'Test User',
-    'email' => 'test@example.com',
-    'role' => 'employee',
-    'status' => 'Active',
-]);
+        User::updateOrCreate(
+            ['email' => 'instructor@maptech.com'],
+            [
+                'fullname' => 'Instructor User',
+                'password' => 'password123',
+                'role' => 'instructor',
+                'status' => 'Active',
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'employee@maptech.com'],
+            [
+                'fullname' => 'Employee User',
+                'password' => 'password123',
+                'role' => 'employee',
+                'status' => 'Active',
+            ]
+        );
     }
 }

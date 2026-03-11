@@ -14,6 +14,8 @@ import { CoursesAndContent } from './pages/admin/CoursesAndContent';
 import { EnrollmentManagement } from './pages/admin/EnrollmentManagement';
 import { ReportsAnalytics } from './pages/admin/ReportsAnalytics';
 import { NotificationManagement } from './pages/admin/NotificationManagement';
+import Certificates from './pages/admin/Certificates';
+import CertificateEditor from './pages/admin/CertificateEditor';
 
 // Instructor Pages
 import { InstructorDashboard } from './pages/instructor/InstructorDashboard';
@@ -51,6 +53,7 @@ export function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCertificateId, setSelectedCertificateId] = useState<string | null>(null);
   const [selectedQuizId, setSelectedQuizId] = useState<number | null>(null);
   const [globalSearch, setGlobalSearch] = useState('');
 
@@ -148,7 +151,8 @@ export function App() {
     setCurrentPage('dashboard');
   };
 
-  const handleNavigate = (page: string, courseId?: string, quizId?: number) => {
+  const handleNavigate = (page: string, courseId?: string, quizId?: number, certificateId?: string) => {
+    // navigate inside the SPA for all pages (including certificates)
     setCurrentPage(page);
     if (user) {
       localStorage.setItem(`maptech_page_${user.role}`, page);
@@ -158,6 +162,9 @@ export function App() {
       if (user) {
         localStorage.setItem(`maptech_courseId_${user.role}`, courseId);
       }
+    }
+    if(certificateId){
+      setSelectedCertificateId(certificateId);
     }
   };
 
@@ -198,10 +205,14 @@ export function App() {
         {currentPage === 'enrollments' && <EnrollmentManagement />}
         {currentPage === 'reports' && <ReportsAnalytics />}
         {currentPage === 'notifications' && <NotificationManagement />}
+        {currentPage === 'certificates' && <Certificates onOpenEditor={(id)=>handleNavigate('certificate-editor', undefined, undefined, String(id))} />}
+        {currentPage === 'certificate-editor' && <CertificateEditor certificateId={selectedCertificateId} />}
         {currentPage === 'qa' && <AdminQADiscussion userId={user.id} />}
         {currentPage === 'settings' && <ProfileSettings />}
       </AdminLayout>
     );
+  } else {
+    // for non-admins render their layouts as before
   }
 
   // =========================
