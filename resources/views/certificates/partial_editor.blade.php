@@ -42,7 +42,7 @@
                                 <option value="cisco">Cisco Style (Detailed)</option>
                             </select>
                             <div id="templateGallery" class="mt-2 flex gap-2">
-                                <button class="template-thumb border rounded p-1" data-template="classic" title="Classic Elegant" style="width:72px;height:54px"> 
+                                <button class="template-thumb border rounded p-1" data-template="classic" title="Classic Elegant" style="width:72px;height:54px">
                                     <div style="width:100%;height:100%;background:linear-gradient(#fff,#f7f5f0);border:3px solid #d4af37;box-sizing:border-box"></div>
                                 </button>
                                 <button class="template-thumb border rounded p-1" data-template="modern" title="Modern Minimal" style="width:72px;height:54px">
