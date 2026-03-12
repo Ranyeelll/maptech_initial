@@ -86,29 +86,43 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen relative bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {/* Background video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        aria-hidden="true"
+      >
+        <source src="/assets/loginBackground.mp4" type="video/mp4" />
+        {/* fallback: silent poster image could be added */}
+      </video>
+      {/* stronger dark overlay for better contrast over video */}
+      <div className="absolute inset-0 bg-black opacity-60 pointer-events-none" aria-hidden="true"></div>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center">
           <img
-            className="h-20 w-auto"
+            className="h-20 w-auto filter drop-shadow-lg"
             src="/assets/Maptech-Official-Logo.png"
             alt="Maptech LearnHub"
           />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-white drop-shadow-md">
           Sign in to LearnHub
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
+        <p className="mt-2 text-center text-sm text-slate-200/85">
           Maptech Information Solutions Inc.
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border-t-4 border-green-500">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-black bg-opacity-60 py-8 px-4 shadow-[0_10px_30px_rgba(0,0,0,0.6)] sm:rounded-lg sm:px-10 border-t-4 border-green-400 backdrop-blur-md">
           <form className="space-y-6" onSubmit={handleSubmit}>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-200">
                 Email address
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -120,14 +134,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 border rounded-md py-2 focus:ring-green-500 focus:border-green-500"
+                  className="block w-full pl-10 bg-slate-800 text-white placeholder-slate-400 border border-slate-700 rounded-md py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400"
                   placeholder="name@maptech.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-200">
                 Password
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
@@ -139,7 +153,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 border rounded-md py-2 focus:ring-green-500 focus:border-green-500"
+                  className="block w-full pl-10 bg-slate-800 text-white placeholder-slate-400 border border-slate-700 rounded-md py-2 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400"
                   placeholder="••••••••"
                 />
               </div>
@@ -157,7 +171,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                className="w-full flex justify-center items-center py-2 px-4 rounded-md text-white bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 shadow-lg ring-1 ring-green-400/30 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
               >
                 {loading ? 'Signing in...' : 'Sign in'}
                 {!loading && <ArrowRight className="ml-2 h-4 w-4" />}

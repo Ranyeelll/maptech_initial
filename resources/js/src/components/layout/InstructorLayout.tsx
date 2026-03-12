@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemeToggle } from '../ThemeToggle';
 import {
   LayoutDashboard,
   BookOpen,
@@ -150,11 +151,12 @@ export function InstructorLayout({
 
               </div>
             </div>
-            <div className="ml-4 flex items-center md:ml-6">
+            <div className="ml-4 flex items-center md:ml-6 space-x-3">
               <button className="bg-white p-1 rounded-full text-slate-400 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                 <span className="sr-only">View notifications</span>
                 <Bell className="h-6 w-6" />
               </button>
+              <ThemeToggle />
             </div>
           </div>
         </div>

@@ -1,0 +1,249 @@
+/* Dark theme variables and improved contrast for accessibility.
+	 Targets when html has class `theme-dark`, or html[data-theme="dark`],
+	 or body has class `theme-dark`. These cover server- and client-side toggles. */
+
+:root.theme-dark, :root[data-theme="dark"], body.theme-dark, .theme-dark {
+	--theme-bg: #06121a;        /* page background (keep deep) */
+	--theme-surface: #0c1620;   /* cards, panels (slightly softened) */
+	--theme-elev: #0f1f28;      /* elevated surface */
+	--theme-fg: #d8eef6;        /* primary text (slightly softer) */
+	--theme-muted: #96a8b5;     /* secondary/muted text (desaturated) */
+	--theme-border: rgba(255,255,255,0.06);
+	--theme-accent: #199377;    /* action accent - base */
+	--theme-accent-soft: rgba(25,147,119,0.18); /* soft overlay for large blocks */
+	--theme-accent-bg: rgba(10,70,56,0.45); /* subdued background for buttons/cards */
+	--theme-warning: #bf8a2a;   /* badges (muted warm) */
+}
+
+/* Base page */
+:root.theme-dark body,
+:root[data-theme="dark"] body,
+body.theme-dark,
+.theme-dark body { background-color: var(--theme-bg) !important; color: var(--theme-fg) !important; }
+
+/* Surfaces: cards, panels, modals, white backgrounds */
+:root.theme-dark .bg-white,
+:root[data-theme="dark"] .bg-white,
+body.theme-dark .bg-white,
+.theme-dark .bg-white,
+.theme-dark .card,
+.theme-dark .modal { background-color: var(--theme-surface) !important; color: var(--theme-fg) !important; }
+
+/* Slightly elevated surfaces */
+:root.theme-dark .bg-slate-50,
+:root[data-theme="dark"] .bg-slate-50,
+.theme-dark .bg-slate-50 { background-color: var(--theme-bg) !important; }
+
+/* Sidebar and deep surfaces */
+:root.theme-dark .bg-slate-900,
+:root[data-theme="dark"] .bg-slate-900,
+.theme-dark .bg-slate-900 { background-color: #04121a !important; }
+:root.theme-dark .bg-slate-950,
+.theme-dark .bg-slate-950 { background-color: #021018 !important; }
+
+/* Text contrast mapping */
+.theme-dark .text-slate-900 { color: var(--theme-fg) !important; }
+.theme-dark .text-slate-800, .theme-dark .text-slate-700 { color: #dbeaf2 !important; }
+.theme-dark .text-slate-600, .theme-dark .text-slate-500 { color: var(--theme-muted) !important; }
+.theme-dark .text-slate-400, .theme-dark .text-slate-300 { color: #9fb0c6 !important; }
+
+/* Muted/secondary text */
+.theme-dark p, .theme-dark span, .theme-dark label { color: var(--theme-fg) !important; }
+.theme-dark .muted, .theme-dark .text-muted { color: var(--theme-muted) !important; }
+
+/* Borders and dividers */
+.theme-dark .border-slate-200, .theme-dark .border, :root[data-theme="dark"] .border { border-color: var(--theme-border) !important; }
+
+/* Buttons, accents */
+.theme-dark .bg-green-600, .theme-dark .bg-green-500 { background-color: var(--theme-accent) !important; color: white !important; }
+.theme-dark .btn, .theme-dark button { color: var(--theme-fg) !important; }
+
+/* Inputs, selects, textareas */
+.theme-dark input, .theme-dark textarea, .theme-dark select, .theme-dark .form-control {
+	background-color: var(--theme-elev) !important;
+	color: var(--theme-fg) !important;
+	border-color: var(--theme-border) !important;
+}
+.theme-dark input::placeholder, .theme-dark textarea::placeholder { color: rgba(233,243,248,0.6) !important; }
+
+/* Shadows and elevation */
+.theme-dark .shadow, .theme-dark .card-shadow { box-shadow: 0 8px 28px rgba(3,7,14,0.6) !important; }
+
+/* Sidebar items and nav */
+.theme-dark .text-slate-300, .theme-dark .nav-link, .theme-dark .sidebar-item { color: var(--theme-muted) !important; }
+.theme-dark .group:hover .sidebar-item, .theme-dark .group:hover .text-slate-300 { color: #d7efe6 !important; }
+.theme-dark .bg-slate-900 .text-white, .theme-dark .bg-slate-900 img { filter: none; }
+
+/* Tables */
+.theme-dark table, .theme-dark th, .theme-dark td { color: var(--theme-fg) !important; border-color: var(--theme-border) !important; }
+.theme-dark thead th { background-color: rgba(255,255,255,0.02) !important; color: #dbeaf2 !important; }
+.theme-dark tbody tr:nth-child(even) { background-color: rgba(255,255,255,0.01) !important; }
+
+/* Icons and SVGs colored via text color utilities */
+.theme-dark .text-slate-400, .theme-dark svg { color: var(--theme-muted) !important; fill: currentColor !important; }
+
+/* Badges */
+.theme-dark .bg-amber-500 { background-color: var(--theme-warning) !important; color: #0b1410 !important; }
+.theme-dark .bg-green-500 { background-color: var(--theme-accent) !important; color: #062018 !important; }
+
+/* Soften strong green blocks (card headers, large accents) with a subtle overlay and gentler background */
+.theme-dark .bg-green-500.large, .theme-dark .card .card-header, .theme-dark .course-header, .theme-dark .hero {
+	background-color: var(--theme-accent-bg) !important;
+	background-image: linear-gradient(135deg, var(--theme-accent-soft), rgba(0,0,0,0.04));
+	color: var(--theme-fg) !important;
+}
+
+/* Buttons: use the accent but slightly darker background with a soft border, reduce shine */
+.theme-dark .btn-primary, .theme-dark .btn-green, .theme-dark .btn-success, .theme-dark .bg-green-600, .theme-dark .bg-green-500 {
+	background-color: rgba(25,147,119,0.9) !important; /* slightly reduced opacity */
+	color: #eaf8f2 !important;
+	box-shadow: none !important;
+	border: 1px solid rgba(255,255,255,0.03) !important;
+}
+
+/* For very large green header areas (card top gradient from original design), reduce saturation */
+.theme-dark .card .card-top, .theme-dark .course-card .card-top {
+	filter: saturate(0.85) brightness(0.98) !important;
+}
+
+/* Muted icons: reduce icon saturation and brightness so they don't compete */
+.theme-dark svg, .theme-dark .icon { color: rgba(255,255,255,0.62) !important; }
+.theme-dark .icon-strong, .theme-dark .btn svg, .theme-dark .action svg { color: var(--theme-fg) !important; }
+
+/* Links */
+.theme-dark a, :root[data-theme="dark"] a, body.theme-dark a { color: #7fcfb9 !important; }
+
+/* Focus states */
+.theme-dark :focus { outline-color: rgba(25,147,119,0.38) !important; }
+
+/* Ensure any `.text-white` in markup stays visible */
+.theme-dark .text-white { color: var(--theme-fg) !important; }
+
+/* Ensure forms / dropdowns / popovers use elevated surface */
+.theme-dark .dropdown-menu, .theme-dark .popover { background-color: var(--theme-surface) !important; color: var(--theme-fg) !important; border-color: var(--theme-border) !important; }
+
+/* Headings and text scales */
+.theme-dark h1, .theme-dark h2, .theme-dark h3, .theme-dark h4, .theme-dark h5, .theme-dark h6 {
+	color: var(--theme-fg) !important;
+}
+.theme-dark .lead, .theme-dark p, .theme-dark span, .theme-dark .text-base, .theme-dark .description {
+	color: var(--theme-fg) !important;
+}
+
+/* Muted text should still be readable */
+.theme-dark .text-muted, .theme-dark .muted, .theme-dark .caption, .theme-dark .small {
+	color: var(--theme-muted) !important;
+}
+
+/* Sidebar labels, nav links */
+.theme-dark .sidebar-item, .theme-dark .nav-link, .theme-dark .menu-item, .theme-dark .nav-text {
+	color: var(--theme-muted) !important;
+}
+.theme-dark .sidebar-item.active, .theme-dark .nav-link.active, .theme-dark .menu-item.active {
+	color: var(--theme-fg) !important;
+}
+
+/* Card titles and content */
+.theme-dark .card .card-title, .theme-dark .card-title, .theme-dark .panel-title { color: var(--theme-fg) !important; }
+.theme-dark .card p, .theme-dark .card .text, .theme-dark .card .meta { color: var(--theme-muted) !important; }
+
+/* Buttons and action text */
+.theme-dark .btn-primary, .theme-dark .btn-green, .theme-dark .btn-success { background-color: var(--theme-accent) !important; color: #001411 !important; }
+.theme-dark .btn, .theme-dark button, .theme-dark .action { color: var(--theme-fg) !important; }
+
+/* Badges and chips */
+.theme-dark .badge, .theme-dark .chip, .theme-dark .pill { color: var(--theme-fg) !important; background-color: rgba(255,255,255,0.03) !important; border-color: var(--theme-border) !important; }
+
+/* Inputs and placeholders */
+.theme-dark input, .theme-dark textarea, .theme-dark select, .theme-dark .form-control { color: var(--theme-fg) !important; }
+.theme-dark input::placeholder, .theme-dark textarea::placeholder { color: rgba(233,243,248,0.55) !important; }
+
+/* Tables: stronger cell text */
+.theme-dark table td, .theme-dark table th, .theme-dark .table td, .theme-dark .table th { color: var(--theme-fg) !important; }
+
+/* Icons: default muted, but strong in headings/buttons */
+.theme-dark svg, .theme-dark .icon { color: var(--theme-muted) !important; }
+.theme-dark .icon-strong, .theme-dark .btn svg, .theme-dark .action svg { color: var(--theme-fg) !important; }
+
+/* Improve contrast for small text elements */
+.theme-dark .small-text, .theme-dark .xs { color: var(--theme-muted) !important; font-weight: 500; }
+
+/* Improve contrast for pill-like badges, tags and status chips used across the UI.
+   Many of these elements use pale backgrounds + light text which is hard to read in dark mode.
+   Force darker text and a subtle border for small inline chips while preserving button styles. */
+.theme-dark .badge,
+.theme-dark .chip,
+.theme-dark .pill,
+.theme-dark .tag,
+.theme-dark .status,
+.theme-dark .status-badge,
+.theme-dark .badge-pill,
+.theme-dark .badge-status,
+.theme-dark .tag-pill,
+.theme-dark .user-pill {
+	color: #062018 !important; /* dark, readable text on pale backgrounds */
+	background-color: rgba(255,255,255,0.08) !important; /* subtle pale backing */
+	border: 1px solid rgba(255,255,255,0.04) !important;
+	font-weight: 600 !important;
+}
+
+/* Ensure explicit colored status backgrounds still use readable (dark) text */
+.theme-dark .bg-green-500,
+.theme-dark .bg-amber-500,
+.theme-dark .status-green,
+.theme-dark .status-amber {
+	color: #062018 !important;
+	font-weight: 600 !important;
+}
+
+/* Do not override primary action buttons' intended contrast (keep button text light where expected) */
+.theme-dark .btn-primary, .theme-dark .btn-success, .theme-dark .btn-green { color: #eaf8f2 !important; }
+
+/* Small chips inside tables/rows often use tiny font; increase legibility slightly */
+.theme-dark table .badge, .theme-dark .table .chip { font-size: 0.88rem !important; padding: 0.26rem 0.6rem !important; }
+
+/* Enrollment table specific adjustments to match light-mode readability */
+.theme-dark .min-w-full.divide-y { border-color: var(--theme-border) !important; }
+.theme-dark thead.bg-slate-50 { background-color: rgba(255,255,255,0.02) !important; }
+.theme-dark thead th { color: var(--theme-muted) !important; border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
+.theme-dark tbody.bg-white { background-color: var(--theme-surface) !important; }
+.theme-dark tbody tr { border-bottom: 1px solid rgba(255,255,255,0.03) !important; }
+.theme-dark tbody tr.hover\:bg-slate-50:hover, .theme-dark tbody tr:hover { background-color: rgba(255,255,255,0.015) !important; }
+
+/* Progress bars: outer track and filled bar */
+.theme-dark .w-full.bg-slate-200 { background-color: rgba(255,255,255,0.04) !important; }
+.theme-dark .bg-green-600, .theme-dark .bg-green-500 { background-color: var(--theme-accent) !important; }
+.theme-dark td .text-xs.text-slate-500 { color: var(--theme-muted) !important; }
+
+/* Status badge mapping: keep light-mode visual but readable on dark background */
+.theme-dark .bg-green-100 { background-color: rgba(25,147,119,0.12) !important; }
+.theme-dark .text-green-800 { color: rgba(3,61,46,0.95) !important; }
+.theme-dark .bg-yellow-100 { background-color: rgba(191,138,42,0.12) !important; }
+.theme-dark .text-yellow-800 { color: rgba(90,55,13,0.95) !important; }
+.theme-dark .bg-slate-100 { background-color: rgba(255,255,255,0.06) !important; }
+.theme-dark .text-slate-800 { color: rgba(8,14,18,0.9) !important; }
+
+/* Inputs, selects and the search box in the filters bar */
+.theme-dark .bg-white.p-4.rounded-lg input,
+.theme-dark .bg-white.p-4.rounded-lg select,
+.theme-dark .bg-white input,
+.theme-dark .bg-white select,
+.theme-dark .relative input.block,
+.theme-dark .relative select.block {
+	background-color: var(--theme-elev) !important;
+	color: var(--theme-fg) !important;
+	border-color: rgba(255,255,255,0.06) !important;
+}
+.theme-dark .relative .text-slate-400 { color: var(--theme-muted) !important; }
+
+/* Action icons and buttons */
+.theme-dark .text-slate-400 { color: var(--theme-muted) !important; }
+.theme-dark .text-slate-400:hover, .theme-dark .text-slate-400:hover svg { color: var(--theme-fg) !important; }
+.theme-dark .text-slate-600 { color: var(--theme-fg) !important; }
+
+/* Dropdown caret/filter icon */
+.theme-dark .h-4.w-4.text-slate-400 { color: var(--theme-muted) !important; }
+
+/* Ensure modal surfaces remain readable */
+.theme-dark .fixed.inset-0 .bg-slate-500 { background-color: rgba(3,7,14,0.6) !important; }
+

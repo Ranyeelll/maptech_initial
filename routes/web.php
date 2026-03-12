@@ -41,6 +41,9 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureAdmin::class])->group(func
     Route::get('/admin/certificates/{id}/download', [CertificateController::class, 'download'])->name('certificates.download');
     Route::get('/admin/certificates/{id}/editor-partial', [CertificateController::class, 'editorPartial'])->name('certificates.partial');
     Route::get('/admin/certificates/page', [CertificateController::class, 'page'])->name('certificates.page');
+    // Upload company logo or e-signatures
+    Route::post('/admin/certificates/upload-asset', [CertificateController::class, 'uploadAsset'])->name('certificates.upload_asset');
+    Route::get('/admin/certificates/assets', [CertificateController::class, 'assets'])->name('certificates.assets');
     // Certificate Templates manager
     Route::get('/admin/certificate-templates', [\App\Http\Controllers\CertificateTemplateController::class, 'index'])->name('certificate_templates.index');
     Route::get('/admin/certificate-templates/create', [\App\Http\Controllers\CertificateTemplateController::class, 'create'])->name('certificate_templates.create');
@@ -52,6 +55,9 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureAdmin::class])->group(func
 });
 
 // =====================
-// CERTIFICATE PAGE
+// CERTIFICATE PAGE (public automatic generator)
 // =====================
-Route::get('/certificate', [CertificateController::class, 'index']);
+Route::get('/certificate', [CertificateController::class, 'publicPage']);
+
+// Read-only employee data for certificate auto-fill
+Route::get('/api/certificate/employee/{id}', [CertificateController::class, 'employeeData']);

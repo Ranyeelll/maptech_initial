@@ -169,6 +169,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'status', 'role:Admin'])->gr
 
     // Certificates (admin) - returns JSON for SPA
     Route::get('/certificates', function () {
+        // Return actual Certificate records plus any completed enrollments that do not yet have a Certificate.
         $certs = \App\Models\Certificate::with(['user:id,fullname,email','course:id,title'])
             ->orderBy('created_at', 'desc')
             ->get()
@@ -180,7 +181,44 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'status', 'role:Admin'])->gr
                     'user' => $c->user ? ['id' => $c->user->id, 'fullname' => $c->user->fullname, 'email' => $c->user->email] : null,
                     'course' => $c->course ? ['id' => $c->course->id, 'title' => $c->course->title] : null,
                 ];
+            })->toArray();
+
+        try {
+            // Find completed enrollments
+            $completed = \App\Models\Enrollment::with(['user:id,fullname,email','course:id,title'])
+                ->where('status', 'Completed')
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            // Build set of existing pairs to avoid duplicates (user_id|course_id)
+            $existing = [];
+            foreach ($certs as $c) {
+                $uid = $c['user']['id'] ?? null;
+                $cid = $c['course']['id'] ?? null;
+                if ($uid && $cid) $existing[$uid.'|'.$cid] = true;
+            }
+
+            foreach ($completed as $enr) {
+                $pair = ($enr->user_id ?? '') . '|' . ($enr->course_id ?? '');
+                if (isset($existing[$pair])) continue;
+                $certs[] = [
+                    'id' => 'enrollment-'.$enr->id,
+                    'certificate_data' => ['issued_at' => ($enr->updated_at ? $enr->updated_at->toDateString() : now()->toDateString())],
+                    'created_at' => $enr->updated_at ?? $enr->enrolled_at ?? now(),
+                    'user' => $enr->user ? ['id' => $enr->user->id, 'fullname' => $enr->user->fullname, 'email' => $enr->user->email] : null,
+                    'course' => $enr->course ? ['id' => $enr->course->id, 'title' => $enr->course->title] : null,
+                ];
+            }
+
+            // Sort by created_at desc
+            usort($certs, function ($a, $b) {
+                $ta = isset($a['created_at']) ? strtotime($a['created_at']) : 0;
+                $tb = isset($b['created_at']) ? strtotime($b['created_at']) : 0;
+                return $tb <=> $ta;
             });
+        } catch (\Throwable $e) {
+            \Log::debug('Failed to include completed enrollments in API certificates list: '.$e->getMessage());
+        }
 
         return response()->json($certs);
     });
