@@ -14,13 +14,13 @@ class CertificateAsset extends Model
         'status',
         'updated_by',
     ];
-    
+
     // allow storing a human-friendly printed name for the asset (e.g. collaborator printed name)
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
     // Add display_name to fillable for quick updates
     public function getFillable()
     {
