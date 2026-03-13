@@ -44,5 +44,15 @@ class DatabaseSeeder extends Seeder
                 'status' => 'Active',
             ]
         );
+
+        // Call other seeders to build a complete example dataset
+        $this->call([
+            DepartmentSeeder::class,
+            SubdepartmentSeeder::class,
+            CourseSeeder::class,
+            ModuleLessonSeeder::class,
+            QuizSeeder::class,
+            CourseEnrollmentSeeder::class,
+        ]);
     }
 }

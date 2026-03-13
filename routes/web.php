@@ -44,6 +44,9 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureAdmin::class])->group(func
     // Upload company logo or e-signatures
     Route::post('/admin/certificates/upload-asset', [CertificateController::class, 'uploadAsset'])->name('certificates.upload_asset');
     Route::get('/admin/certificates/assets', [CertificateController::class, 'assets'])->name('certificates.assets');
+    // New certificate assets API (canvas + upload fallback)
+    Route::get('/admin/certificate-assets', [\App\Http\Controllers\CertificateAssetController::class, 'index'])->name('certificate-assets.index');
+    Route::post('/admin/certificate-assets/store', [\App\Http\Controllers\CertificateAssetController::class, 'store'])->name('certificate-assets.store');
     // Certificate Templates manager
     Route::get('/admin/certificate-templates', [\App\Http\Controllers\CertificateTemplateController::class, 'index'])->name('certificate_templates.index');
     Route::get('/admin/certificate-templates/create', [\App\Http\Controllers\CertificateTemplateController::class, 'create'])->name('certificate_templates.create');

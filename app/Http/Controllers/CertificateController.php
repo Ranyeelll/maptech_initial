@@ -64,9 +64,14 @@ class CertificateController extends Controller
                 'certificate_id' => strtoupper(\Illuminate\Support\Str::random(10)),
                 'instructor' => optional($course->instructor)->fullname,
                 'company' => 'Maptech Information Solution Inc.',
-                'company_logo' => $this->getAssetUrl('Maptech-Official-Logo'),
-                'signature_president' => $this->getAssetUrl('signature_president'),
-                'signature_instructor' => $this->getAssetUrl('signature_instructor'),
+                // Prefer certificate_assets table entries if present; fallback to original asset resolution
+                'company_logo' => $this->getCertificateAssetUrl('company_logo') ?? $this->getAssetUrl('Maptech-Official-Logo'),
+                'partner_logo' => $this->getCertificateAssetUrl('partner_logo') ?? null,
+                'signature_president' => $this->getCertificateAssetUrl('signature_president') ?? $this->getAssetUrl('signature_president'),
+                'signature_instructor' => $this->getCertificateAssetUrl('signature_instructor') ?? $this->getAssetUrl('signature_instructor'),
+                'signature_collaborator' => $this->getCertificateAssetUrl('signature_collaborator'),
+                    'collaborator_name' => null,
+                    'president_name' => null,
                 'collaborated_companies' => [],
             ];
 
@@ -143,6 +148,25 @@ class CertificateController extends Controller
             }
 
             try {
+                // If there is a saved collaborator asset with a display_name, merge it into certificate data
+                try {
+                    $collabAsset = \App\Models\CertificateAsset::where('key','signature_collaborator')->where('status','active')->latest()->first();
+                    if ($collabAsset && !empty($collabAsset->display_name)) {
+                        $certificateData['collaborator_name'] = $collabAsset->display_name;
+                    }
+                } catch (\Throwable $__e) { /* ignore */ }
+                    // If there is a saved president asset with a display_name, merge it; otherwise use default
+                    try {
+                        $presAsset = \App\Models\CertificateAsset::where('key','signature_president')->where('status','active')->latest()->first();
+                        if ($presAsset && !empty($presAsset->display_name)) {
+                            $certificateData['president_name'] = $presAsset->display_name;
+                        } else {
+                            $certificateData['president_name'] = 'Prud De Leon';
+                        }
+                    } catch (\Throwable $__e) {
+                        $certificateData['president_name'] = 'Prud De Leon';
+                    }
+
                 $cert = \App\Models\Certificate::create([
                     'user_id' => $data['user_id'],
                     'course_id' => $data['course_id'],
@@ -338,6 +362,7 @@ class CertificateController extends Controller
             'logo' => 'Maptech-Official-Logo',
             'signature_president' => 'signature_president',
             'signature_instructor' => 'signature_instructor',
+            'signature_collaborator' => 'signature_collaborator',
         ];
 
         $type = $data['type'];
@@ -401,17 +426,21 @@ class CertificateController extends Controller
      */
     public function assets()
     {
-        // Prefer values stored in global template if present
-        $company = $this->getAssetUrl('Maptech-Official-Logo');
-        $pres = $this->getAssetUrl('signature_president');
-        $instr = $this->getAssetUrl('signature_instructor');
+        // Prefer entries in certificate_assets table if available, otherwise use global template/public assets
+        $company = $this->getCertificateAssetUrl('company_logo') ?? $this->getAssetUrl('Maptech-Official-Logo');
+        $partner = $this->getCertificateAssetUrl('partner_logo');
+        $pres = $this->getCertificateAssetUrl('signature_president') ?? $this->getAssetUrl('signature_president');
+        $instr = $this->getCertificateAssetUrl('signature_instructor') ?? $this->getAssetUrl('signature_instructor');
+        $collab = $this->getCertificateAssetUrl('signature_collaborator');
         try {
             $global = \App\Models\CertificateTemplate::whereNull('course_id')->where('name','global')->first();
             if ($global && is_array($global->template_data)) {
                 $td = $global->template_data;
-                if (!empty($td['company_logo'])) $company = $this->getAssetUrl($td['company_logo']);
-                if (!empty($td['signature_president'])) $pres = $this->getAssetUrl($td['signature_president']);
-                if (!empty($td['signature_instructor'])) $instr = $this->getAssetUrl($td['signature_instructor']);
+                if (!empty($td['company_logo']) && empty($company)) $company = $this->getAssetUrl($td['company_logo']);
+                if (!empty($td['signature_president']) && empty($pres)) $pres = $this->getAssetUrl($td['signature_president']);
+                if (!empty($td['signature_instructor']) && empty($instr)) $instr = $this->getAssetUrl($td['signature_instructor']);
+                if (!empty($td['signature_collaborator']) && empty($collab)) $collab = $this->getAssetUrl($td['signature_collaborator']);
+                if (!empty($td['partner_logo']) && empty($partner)) $partner = $this->getAssetUrl($td['partner_logo']);
             }
         } catch (\Throwable $e) {
             \Log::debug('Failed to read global certificate assets: '.$e->getMessage());
@@ -419,8 +448,39 @@ class CertificateController extends Controller
 
         return response()->json([
             'company_logo' => $company,
+            'partner_logo' => $partner ?? null,
             'signature_president' => $pres,
             'signature_instructor' => $instr,
+            'signature_collaborator' => $collab,
+            // include collaborator and president printed names from certificate_assets record when available
+            'collaborator_name' => optional(\App\Models\CertificateAsset::where('key','signature_collaborator')->where('status','active')->latest()->first())->display_name ?? null,
+            'president_name' => optional(\App\Models\CertificateAsset::where('key','signature_president')->where('status','active')->latest()->first())->display_name ?? 'Prud De Leon',
         ]);
+    }
+
+    /**
+     * Return certificate asset URL for a given key if present in certificate_assets table.
+     */
+    private function getCertificateAssetUrl(string $key)
+    {
+        try {
+            $asset = \App\Models\CertificateAsset::where('key', $key)->where('status','active')->latest()->first();
+            if ($asset && $asset->path) {
+                $url = \Illuminate\Support\Facades\Storage::disk('public')->url($asset->path);
+                try {
+                    $full = \Illuminate\Support\Facades\Storage::disk('public')->path($asset->path);
+                    if (file_exists($full)) {
+                        $v = filemtime($full);
+                        return $url . '?v=' . $v;
+                    }
+                } catch (\Throwable $__e) {
+                    // ignore and return url without version
+                }
+                return $url;
+            }
+        } catch (\Throwable $e) {
+            \Log::debug('Error reading certificate_asset for key '.$key.': '.$e->getMessage());
+        }
+        return null;
     }
 }

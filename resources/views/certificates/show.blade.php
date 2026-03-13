@@ -58,9 +58,9 @@
                 })();
             </script>
         @else
-            <div style="max-width:820px;margin:0 auto;background:#ffffff;padding:20px;border:1px solid #e6e8eb;box-shadow:0 6px 18px rgba(15,23,42,0.04);">
+            <div style="max-width:820px;margin:0 auto;background:#ffffff;padding:20px;border:1px solid #e6e8eb;box-shadow:0 6px 18px rgba(15,23,42,0.04);position:relative;">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;">
-                    <div style="flex:1 1 60%;padding-right:18px;">
+                    <div style="flex:1 1 100%;padding-right:18px;">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
                             <img src="{{ $data['company_logo'] ?? url('/assets/Maptech-Official-Logo.png') }}" alt="Maptech" style="height:46px;object-fit:contain;" onerror="this.style.display='none'">
                             <div style="font-size:13px;color:#374151;font-weight:700;">Maptech Information Solutions Inc.</div>
@@ -83,35 +83,59 @@
                             </ul>
                         </div>
 
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
-                            <div style="display:flex;align-items:center;gap:12px;">
-                                <div style="width:70px;height:70px;border:1px solid #e6e7eb;background:#f8fafc;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;">QR</div>
-                                <div style="font-size:11px;color:#64748b;">Scan to verify<br><span style="color:#9aa6b3">Certificate ID: {{ $data['certificate_id'] ?? $certificate->id }}</span></div>
+                        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px;gap:20px;">
+                            <div style="flex:1; text-align:left;">
+                                        <div style="display:flex;flex-direction:column;align-items:center;">
+                                            @if(!empty($data['signature_instructor']))
+                                                <img src="{{ $data['signature_instructor'] }}" alt="Instructor Signature" style="height:56px;object-fit:contain;display:block;margin-bottom:6px;" onerror="this.style.display='none'" />
+                                            @else
+                                                <div style="height:56px;margin-bottom:6px;"></div>
+                                            @endif
+                                            <div style="width:160px;border-top:1px solid #111827;margin:6px 0;"></div>
+                                            <div style="font-size:12px;color:#111827;font-weight:600;">{{ $data['instructor'] ?? '' }}</div>
+                                            <div style="font-size:11px;color:#475569;">Instructor</div>
+                                        </div>
                             </div>
 
-                            <div style="text-align:right;">
-                                @if(!empty($data['signature_president']))
-                                    <img src="{{ $data['signature_president'] }}" alt="President Signature" style="height:40px;object-fit:contain;margin-bottom:6px;" onerror="this.style.display='none'" />
-                                @else
-                                    <div style="border-top:2px solid #111827;width:160px;margin-left:auto;margin-bottom:6px;"></div>
-                                @endif
-                                <div style="font-size:12px;color:#111827;font-weight:600;">President</div>
-                                <div style="font-size:11px;color:#475569;">President, Maptech Information Solutions Inc.</div>
+                            <div style="flex:1; text-align:center;">
+                                <div style="display:flex;flex-direction:column;align-items:center;">
+                                    @if(!empty($data['signature_president']))
+                                        <img src="{{ $data['signature_president'] }}" alt="President Signature" style="height:56px;object-fit:contain;display:block;margin-bottom:6px;" onerror="this.style.display='none'" />
+                                    @else
+                                        <div style="height:56px;margin-bottom:6px;"></div>
+                                    @endif
+                                    <div style="width:160px;border-top:1px solid #111827;margin:6px 0;"></div>
+                                    <div style="font-size:12px;color:#111827;font-weight:600;">{{ $data['president_name'] ?? 'Prud De Leon' }}</div>
+                                    <div style="font-size:11px;color:#475569;">President, Maptech Information Solutions Inc.</div>
+                                </div>
+                            </div>
+
+                            <div style="flex:1; text-align:right;">
+                                <div style="display:flex;flex-direction:column;align-items:center;">
+                                    @if(!empty($data['signature_collaborator']))
+                                        <img src="{{ $data['signature_collaborator'] }}" alt="Collaborator Signature" style="height:56px;object-fit:contain;display:block;margin-bottom:6px;" onerror="this.style.display='none'" />
+                                    @else
+                                        <div style="height:56px;margin-bottom:6px;"></div>
+                                    @endif
+                                    <div style="width:160px;border-top:1px solid #111827;margin:6px 0;"></div>
+                                    <div style="font-size:12px;color:#111827;font-weight:600;">{{ $data['collaborator_name'] ?? ($data['collaborated_companies'] ? implode(', ', (array) $data['collaborated_companies']) : '') }}</div>
+                                    <div style="font-size:11px;color:#475569;">Collaborator</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="flex:0 0 200px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
-                        @if(!empty($data['partner_logo']))
-                            <div style="width:180px;height:90px;border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;">
-                                <img src="{{ $data['partner_logo'] }}" alt="Partner Logo" style="max-width:100%;max-height:100%;object-fit:contain;" onerror="this.style.display='none'" />
-                            </div>
-                        @else
-                            <div style="width:180px;height:90px;background:linear-gradient(180deg,#f7fcff,#eef7ff);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#0b63a7;font-weight:700;">Partner<br>Logo</div>
-                        @endif
-                        <div style="width:180px;height:90px;background:linear-gradient(180deg,#fffaf2,#fff5ea);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#b8872b;font-weight:700;">Maptech Seal</div>
-                        <div style="font-size:11px;color:#94a3b8;text-align:right;">Issued: {{ $data['issued_at'] ?? $certificate->created_at->toDateString() }}</div>
-                    </div>
+                </div>
+
+                {{-- Partner logo anchored inside certificate at top-right --}}
+                <div style="position:absolute; top:22px; right:22px; width:160px; max-width:35%; display:flex;flex-direction:column;align-items:center;">
+                    @if(!empty($data['partner_logo']))
+                        <img src="{{ $data['partner_logo'] }}" alt="Partner Logo" style="max-width:100%;max-height:90px;object-fit:contain;display:block;" onerror="this.style.display='none'" />
+                    @else
+                        <div style="width:100%;height:64px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#0b63a7;font-weight:700;background:transparent;font-size:12px;">Partner Logo</div>
+                    @endif
+                    <div style="font-size:11px;color:#94a3b8;text-align:center;margin-top:6px;">Issued: {{ $data['issued_at'] ?? $certificate->created_at->toDateString() }}</div>
+                </div>
                 </div>
             </div>
         @endif
