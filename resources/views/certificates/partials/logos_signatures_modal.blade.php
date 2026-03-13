@@ -86,6 +86,13 @@
 
     <script>
     (() => {
+        const getCsrfToken = function(){
+            const m = document.querySelector('meta[name="csrf-token"]');
+            if (m && m.getAttribute('content')) return m.getAttribute('content');
+            if (window.Laravel && window.Laravel.csrfToken) return window.Laravel.csrfToken;
+            const c = document.cookie.match('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)');
+            return c ? decodeURIComponent(c.pop()) : '';
+        };
         const keys = ['signature_president','signature_instructor','signature_collaborator'];
         const ratio = window.devicePixelRatio || 1;
 
@@ -131,7 +138,7 @@
                 const key = this.getAttribute('data-key'); const c = document.getElementById('canvas-'+key);
                 if(!c) return alert('Canvas not found');
                 const dataUrl = c.toDataURL('image/png');
-                const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                const token = getCsrfToken() || '';
                 try{
                     // include collaborator display name when saving collaborator signature
                     const payload = { key: key, image: dataUrl };
@@ -164,7 +171,7 @@
                     const dn = (document.getElementById(fieldId) as HTMLInputElement)?.value || '';
                     if (dn) fd.append('display_name', dn);
                 }
-                const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                const token = getCsrfToken() || '';
                 try{
                     const res = await fetch('/admin/certificate-assets/store', { method: 'POST', credentials: 'include', headers: { 'X-CSRF-TOKEN': token }, body: fd });
                     if(!res.ok) throw new Error('Upload failed');

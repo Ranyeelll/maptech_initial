@@ -1,6 +1,12 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-  const csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
+  const getCsrfToken = function(){
+    const m = document.querySelector('meta[name="csrf-token"]');
+    if (m && m.getAttribute('content')) return m.getAttribute('content');
+    if (window.Laravel && window.Laravel.csrfToken) return window.Laravel.csrfToken;
+    const c = document.cookie.match('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)');
+    return c ? decodeURIComponent(c.pop()) : '';
+  };
+  const csrf = getCsrfToken();
   const allowedKeys = ['company_logo','signature_president','signature_instructor','signature_collaborator'];
 
   allowedKeys.forEach(key => {

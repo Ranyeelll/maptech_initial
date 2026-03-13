@@ -1,5 +1,20 @@
 import React, { useEffect, useState } from 'react';
 
+// Helper: read CSRF token robustly from meta tag, window variable, or XSRF cookie
+function getCookie(name: string) {
+  const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return match ? decodeURIComponent(match.pop() || '') : null;
+}
+
+function getCsrfToken(): string {
+  const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+  if (meta && meta.getAttribute('content')) return meta.getAttribute('content') as string;
+  if ((window as any).Laravel && (window as any).Laravel.csrfToken) return (window as any).Laravel.csrfToken;
+  const xsrf = getCookie('XSRF-TOKEN');
+  if (xsrf) return xsrf;
+  return '';
+}
+
 interface Certificate {
   id: number;
   certificate_data?: any;
@@ -198,8 +213,8 @@ export default function Certificates({ onOpenEditor }: Props) {
                   e.preventDefault();
                   const form = e.currentTarget as HTMLFormElement;
                   setUploading(true);
-                  try{
-                    const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+                    try{
+                    const token = getCsrfToken();
                     const logo = (form.querySelector('input[name="asset_company_logo"]') as HTMLInputElement).files?.[0];
                     if (logo){ const fd = new FormData(); fd.append('asset', logo); fd.append('type','logo'); await fetch('/admin/certificates/upload-asset',{method:'POST',credentials:'include',headers:{'X-CSRF-TOKEN':token||''},body:fd}); }
                     const otherName = (form.querySelector('#otherAssetName') as HTMLInputElement).value.trim();
@@ -232,7 +247,7 @@ export default function Certificates({ onOpenEditor }: Props) {
                           <button type="button" onClick={async ()=>{
                             const input = document.getElementById('asset_partner_logo') as HTMLInputElement; if(!input || !input.files?.[0]) return alert('Choose a partner logo first');
                             const f = input.files[0]; const fd = new FormData(); fd.append('file', f); fd.append('key', 'partner_logo');
-                            try{ const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content; const res = await fetch('/admin/certificate-assets/store',{ method:'POST', credentials:'include', headers:{'X-CSRF-TOKEN': token||''}, body: fd }); if(!res.ok) throw new Error('upload failed'); const j = await res.json(); setModalAssets((s:any)=>({ ...s, partner_logo: j.url })); setAssets(await (await fetch('/admin/certificates/assets',{credentials:'include',headers:{'Accept':'application/json'}})).json()); alert('Partner logo uploaded'); }catch(err){ console.error(err); alert('Upload failed'); }
+                            try{ const token = getCsrfToken(); const res = await fetch('/admin/certificate-assets/store',{ method:'POST', credentials:'include', headers:{'X-CSRF-TOKEN': token||''}, body: fd }); if(!res.ok) throw new Error('upload failed'); const j = await res.json(); setModalAssets((s:any)=>({ ...s, partner_logo: j.url })); setAssets(await (await fetch('/admin/certificates/assets',{credentials:'include',headers:{'Accept':'application/json'}})).json()); alert('Partner logo uploaded'); }catch(err){ console.error(err); alert('Upload failed'); }
                           }} className="mt-1 bg-blue-600 text-white px-3 py-1 rounded">Upload Partner Logo</button>
                         </div>
                       </div>
@@ -272,7 +287,7 @@ export default function Certificates({ onOpenEditor }: Props) {
                           <button type="button" onClick={async ()=>{
                             const c = canvasRefs.current[key]; if(!c) return; const dataUrl = c.toDataURL('image/png');
                             try{
-                              const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+                              const token = getCsrfToken();
                               const payload: any = { key: key, image: dataUrl };
                               if (key === 'signature_collaborator' || key === 'signature_president') {
                                 const fieldId = key === 'signature_collaborator' ? 'collaborator_display_name' : 'president_printed_name';
@@ -291,7 +306,7 @@ export default function Certificates({ onOpenEditor }: Props) {
                           <input type="file" name={`asset_${key}`} accept="image/*" onChange={async (e)=>{
                             const f = (e.target as HTMLInputElement).files?.[0]; if(!f) return;
                             try{
-                              const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+                              const token = getCsrfToken();
                               const fd = new FormData(); fd.append('file', f); fd.append('key', key);
                               if (key === 'signature_collaborator' || key === 'signature_president') {
                                 const fieldId = key === 'signature_collaborator' ? 'collaborator_display_name' : 'president_printed_name';
@@ -379,10 +394,10 @@ function GenerateButton({ cert, onDone }: { cert: any, onDone?: ()=>void }){
     if (!cert.user?.id || !cert.course?.id) return;
     setBusy(true);
     try{
-      const token = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+      const token = getCsrfToken();
       const res = await fetch('/admin/certificates/generate', {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

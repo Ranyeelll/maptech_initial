@@ -83,43 +83,46 @@
                             </ul>
                         </div>
 
-                        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px;gap:20px;">
-                            <div style="flex:1; text-align:left;">
-                                        <div style="display:flex;flex-direction:column;align-items:center;">
-                                            @if(!empty($data['signature_instructor']))
-                                                <img src="{{ $data['signature_instructor'] }}" alt="Instructor Signature" style="height:56px;object-fit:contain;display:block;margin-bottom:6px;" onerror="this.style.display='none'" />
-                                            @else
-                                                <div style="height:56px;margin-bottom:6px;"></div>
-                                            @endif
-                                            <div style="width:160px;border-top:1px solid #111827;margin:6px 0;"></div>
-                                            <div style="font-size:12px;color:#111827;font-weight:600;">{{ $data['instructor'] ?? '' }}</div>
-                                            <div style="font-size:11px;color:#475569;">Instructor</div>
-                                        </div>
-                            </div>
-
-                            <div style="flex:1; text-align:center;">
+                        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:18px;gap:28px;width:640px;max-width:calc(100% - 48px);margin:18px 0 0 -45px;">
+                            <!-- Column: Instructor -->
+                            <div style="flex:1;display:flex;justify-content:center;">
                                 <div style="display:flex;flex-direction:column;align-items:center;">
-                                    @if(!empty($data['signature_president']))
-                                        <img src="{{ $data['signature_president'] }}" alt="President Signature" style="height:56px;object-fit:contain;display:block;margin-bottom:6px;" onerror="this.style.display='none'" />
+                                    @if(!empty($data['signature_instructor']))
+                                        <img src="{{ $data['signature_instructor'] }}" alt="Instructor Signature" style="height:56px;object-fit:contain;display:block;margin:6px auto 4px;transform:translateY(4px);" onerror="this.style.display='none'" />
                                     @else
-                                        <div style="height:56px;margin-bottom:6px;"></div>
+                                        <div style="height:56px;margin-bottom:4px;"></div>
                                     @endif
-                                    <div style="width:160px;border-top:1px solid #111827;margin:6px 0;"></div>
-                                    <div style="font-size:12px;color:#111827;font-weight:600;">{{ $data['president_name'] ?? 'Prud De Leon' }}</div>
-                                    <div style="font-size:11px;color:#475569;">President, Maptech Information Solutions Inc.</div>
+                                    <div style="font-size:12px;color:#111827;font-weight:600;text-align:center;">{{ $data['instructor'] ?? '' }}</div>
+                                    <div style="width:160px;border-top:1px solid #111827;margin:6px auto;"></div>
+                                    <div style="font-size:11px;color:#475569;text-align:center;">Instructor</div>
                                 </div>
                             </div>
 
-                            <div style="flex:1; text-align:right;">
+                            <!-- Column: President -->
+                            <div style="flex:1;display:flex;justify-content:center;">
+                                <div style="display:flex;flex-direction:column;align-items:center;">
+                                    @if(!empty($data['signature_president']))
+                                        <img src="{{ $data['signature_president'] }}" alt="President Signature" style="height:56px;object-fit:contain;display:block;margin:6px auto 4px;transform:translateY(4px);" onerror="this.style.display='none'" />
+                                    @else
+                                        <div style="height:56px;margin-bottom:4px;"></div>
+                                    @endif
+                                    <div style="font-size:12px;color:#111827;font-weight:600;text-align:center;">{{ $data['president_name'] ?? 'Prud De Leon' }}</div>
+                                    <div style="width:160px;border-top:1px solid #111827;margin:6px auto;"></div>
+                                    <div style="font-size:11px;color:#475569;text-align:center;">President, Maptech Information Solutions Inc.</div>
+                                </div>
+                            </div>
+
+                            <!-- Column: Collaborator -->
+                            <div style="flex:1;display:flex;justify-content:center;">
                                 <div style="display:flex;flex-direction:column;align-items:center;">
                                     @if(!empty($data['signature_collaborator']))
-                                        <img src="{{ $data['signature_collaborator'] }}" alt="Collaborator Signature" style="height:56px;object-fit:contain;display:block;margin-bottom:6px;" onerror="this.style.display='none'" />
+                                        <img src="{{ $data['signature_collaborator'] }}" alt="Collaborator Signature" style="height:56px;object-fit:contain;display:block;margin:0 auto 4px;transform:translateY(2px);" onerror="this.style.display='none'" />
                                     @else
-                                        <div style="height:56px;margin-bottom:6px;"></div>
+                                        <div style="height:56px;margin-bottom:4px;"></div>
                                     @endif
-                                    <div style="width:160px;border-top:1px solid #111827;margin:6px 0;"></div>
-                                    <div style="font-size:12px;color:#111827;font-weight:600;">{{ $data['collaborator_name'] ?? ($data['collaborated_companies'] ? implode(', ', (array) $data['collaborated_companies']) : '') }}</div>
-                                    <div style="font-size:11px;color:#475569;">Collaborator</div>
+                                    <div style="font-size:12px;color:#111827;font-weight:600;text-align:center;">{{ $data['collaborator_name'] ?? ($data['collaborated_companies'] ? implode(', ', (array) $data['collaborated_companies']) : '') }}</div>
+                                    <div style="width:160px;border-top:1px solid #111827;margin:6px auto;"></div>
+                                    <div style="font-size:11px;color:#475569;text-align:center;">Collaborator</div>
                                 </div>
                             </div>
                         </div>

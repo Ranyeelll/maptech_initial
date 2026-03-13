@@ -239,7 +239,13 @@
             }
 
             async function uploadOne(fd){
-                const token = document.querySelector('meta[name="csrf-token"]').content;
+                const token = (function(){
+                    const m = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
+                    if (m && m.getAttribute('content')) return m.getAttribute('content');
+                    if (window.Laravel && window.Laravel.csrfToken) return window.Laravel.csrfToken;
+                    const c = document.cookie.match('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)');
+                    return c ? decodeURIComponent(c.pop()) : '';
+                })();
                 const res = await fetch('/admin/certificates/upload-asset', { method:'POST', credentials:'include', headers:{'X-CSRF-TOKEN': token}, body: fd });
                 if (!res.ok) { console.error('upload failed', res.status); }
             }
@@ -252,8 +258,14 @@
         <script>
         // signature-pad.js inlined for admin modal
         document.addEventListener('DOMContentLoaded', function () {
-            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-            const csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
+            const getCsrfToken = function(){
+                const m = document.querySelector('meta[name="csrf-token"]');
+                if (m && m.getAttribute('content')) return m.getAttribute('content');
+                if (window.Laravel && window.Laravel.csrfToken) return window.Laravel.csrfToken;
+                const c = document.cookie.match('(^|;)\\s*XSRF-TOKEN\\s*=\\s*([^;]+)');
+                return c ? decodeURIComponent(c.pop()) : '';
+            };
+            const csrf = getCsrfToken();
             const allowedKeys = ['company_logo','signature_president','signature_instructor','signature_collaborator'];
 
             allowedKeys.forEach(key => {
