@@ -146,6 +146,7 @@ export function InstructorNotifications() {
     fetchDepartments();
 
     // Subscribe to realtime notifications if Echo is available
+    let cleanup: (() => void) | undefined;
     (async () => {
       try {
         const Echo = (window as any).Echo;
@@ -168,7 +169,7 @@ export function InstructorNotifications() {
         channel.listen('NotificationCreated', createdHandler);
         channel.listen('NotificationCountUpdated', countHandler);
 
-        return () => {
+        cleanup = () => {
           try { channel.stopListening('NotificationCreated'); channel.stopListening('NotificationCountUpdated'); } catch (e) {}
         };
       } catch (e) {
@@ -177,7 +178,35 @@ export function InstructorNotifications() {
     })();
 
     return () => {
-      // no-op cleanup
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const Echo = (window as any).Echo;
+    const hasRealtime = !!Echo && typeof Echo.private === 'function';
+    if (hasRealtime) return;
+
+    const syncFallback = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchNotifications({ silent: true });
+      fetchUnreadCount();
+    };
+
+    const handleVisibilityChange = () => {
+      syncFallback();
+    };
+
+    window.addEventListener('focus', syncFallback);
+    window.addEventListener('online', syncFallback);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', syncFallback);
+      window.removeEventListener('online', syncFallback);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -201,16 +230,21 @@ export function InstructorNotifications() {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const res = await fetch('/api/instructor/notifications', fetchOptions('GET'));
       const data = await res.json();
       setNotifications(extractNotificationItems(data));
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -391,7 +425,8 @@ export function InstructorNotifications() {
     };
     const title = typeLabels[formData.type] || 'Announcement';
 
-    setIsSending(true);
+    showConfirm('Send this notification to employees now?', async () => {
+      setIsSending(true);
     try {
       const payload: any = {
         title: title,
@@ -426,6 +461,7 @@ export function InstructorNotifications() {
     } finally {
       setIsSending(false);
     }
+    });
   };
 
   const handleSendToAdmin = async (e: React.FormEvent) => {
@@ -445,41 +481,43 @@ export function InstructorNotifications() {
     };
     const title = typeLabels[adminFormData.type] || 'Report';
 
-    setIsSending(true);
-    try {
-      // Fetch CSRF cookie first
-      await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
+    showConfirm('Send this message to admin now?', async () => {
+      setIsSending(true);
+      try {
+        // Fetch CSRF cookie first
+        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
 
-      // Get XSRF token from cookie
-      const xsrfToken = getCookie('XSRF-TOKEN');
+        // Get XSRF token from cookie
+        const xsrfToken = getCookie('XSRF-TOKEN');
 
-      const res = await fetch('/api/instructor/notifications/notify-admin', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-XSRF-TOKEN': decodeURIComponent(xsrfToken || ''),
-        },
-        body: JSON.stringify({ ...adminFormData, title }),
-      });
+        const res = await fetch('/api/instructor/notifications/notify-admin', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-XSRF-TOKEN': decodeURIComponent(xsrfToken || ''),
+          },
+          body: JSON.stringify({ ...adminFormData, title }),
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (res.ok) {
-        pushToast('Sent Successfully', `Notification sent to ${data.recipients_count} admin(s)!`, 'success');
-        setIsAdminModalOpen(false);
-        setAdminFormData({ message: '', type: 'report' });
-      } else {
-        pushToast('Failed', data.message || 'Failed to send notification', 'error');
+        if (res.ok) {
+          pushToast('Sent Successfully', `Notification sent to ${data.recipients_count} admin(s)!`, 'success');
+          setIsAdminModalOpen(false);
+          setAdminFormData({ message: '', type: 'report' });
+        } else {
+          pushToast('Failed', data.message || 'Failed to send notification', 'error');
+        }
+      } catch (err) {
+        console.error('Failed to send notification to admin:', err);
+        pushToast('Error', 'Failed to send notification', 'error');
+      } finally {
+        setIsSending(false);
       }
-    } catch (err) {
-      console.error('Failed to send notification to admin:', err);
-      pushToast('Error', 'Failed to send notification', 'error');
-    } finally {
-      setIsSending(false);
-    }
+    });
   };
 
   const formatDate = (dateStr: string) => {

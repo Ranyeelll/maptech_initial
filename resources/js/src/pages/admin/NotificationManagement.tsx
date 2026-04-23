@@ -271,9 +271,38 @@ export function NotificationManagement() {
     };
   }, []);
 
-  const fetchNotifications = async () => {
+  useEffect(() => {
+    const Echo = (window as any).Echo;
+    const hasRealtime = !!Echo && typeof Echo.private === 'function';
+    if (hasRealtime) return;
+
+    const syncFallback = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchNotifications({ silent: true });
+      fetchUnreadCount();
+    };
+
+    const handleVisibilityChange = () => {
+      syncFallback();
+    };
+
+    window.addEventListener('focus', syncFallback);
+    window.addEventListener('online', syncFallback);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', syncFallback);
+      window.removeEventListener('online', syncFallback);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  const fetchNotifications = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const res = await fetch('/api/admin/notifications', await fetchOptions('GET'));
       let data: any = null;
       try {
@@ -292,7 +321,9 @@ export function NotificationManagement() {
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -562,44 +593,115 @@ export function NotificationManagement() {
       setPreviewModal({ open: true, recipientCount: null, error: 'Please enter a message.' });
       return;
     }
-    setIsSendingOne(true);
-    try {
-      const xsrf = await getXsrfToken();
-      const payload = new FormData();
-      payload.append('title', onePersonForm.title);
-      payload.append('message', onePersonForm.message);
-      payload.append('announcement_mode', 'one_person');
-      payload.append('roles[]', onePersonRole === 'instructor' ? 'Instructor' : 'Employee');
-      if (onePersonDept) payload.append('department_id', String(Number(onePersonDept)));
-      if (onePersonSubdept) payload.append('subdepartment_id', String(Number(onePersonSubdept)));
-      payload.append('target_user_ids[]', String(onePersonSelected.id));
-      onePersonImages.forEach((f) => payload.append('message_images[]', f));
-      const res = await fetch('/api/admin/notifications/announce', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': xsrf },
-        body: payload,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSuccessToast({ show: true, count: 1 });
-        setIsOnePersonModalOpen(false);
-        resetOnePersonForm();
-        fetchSentAnnouncements();
-      } else {
-        setPreviewModal({ open: true, recipientCount: null, error: data?.message || 'Failed to send announcement.' });
+    showConfirm('Send this notification to the selected person now?', async () => {
+      setIsSendingOne(true);
+      try {
+        const xsrf = await getXsrfToken();
+        const payload = new FormData();
+        payload.append('title', onePersonForm.title);
+        payload.append('message', onePersonForm.message);
+        payload.append('announcement_mode', 'one_person');
+        payload.append('roles[]', onePersonRole === 'instructor' ? 'Instructor' : 'Employee');
+        if (onePersonDept) payload.append('department_id', String(Number(onePersonDept)));
+        if (onePersonSubdept) payload.append('subdepartment_id', String(Number(onePersonSubdept)));
+        payload.append('target_user_ids[]', String(onePersonSelected.id));
+        onePersonImages.forEach((f) => payload.append('message_images[]', f));
+        const res = await fetch('/api/admin/notifications/announce', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': xsrf },
+          body: payload,
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setSuccessToast({ show: true, count: 1 });
+          setIsOnePersonModalOpen(false);
+          resetOnePersonForm();
+          fetchSentAnnouncements();
+        } else {
+          setPreviewModal({ open: true, recipientCount: null, error: data?.message || 'Failed to send announcement.' });
+        }
+      } catch {
+        setPreviewModal({ open: true, recipientCount: null, error: 'Failed to send announcement.' });
+      } finally {
+        setIsSendingOne(false);
       }
-    } catch {
-      setPreviewModal({ open: true, recipientCount: null, error: 'Failed to send announcement.' });
-    } finally {
-      setIsSendingOne(false);
-    }
+    });
   };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const rolesArray = Array.isArray(formData.roles) ? formData.roles : (formData.roles ? [formData.roles] : []);
     const hasSelectedUsers = Array.isArray(formData.target_user_ids) && formData.target_user_ids.length > 0;
+    if (isMessageEmpty(formData.message)) {
+      setPreviewModal({ open: true, recipientCount: null, error: 'Please enter a message.' });
+      return;
+    }
+    if (!hasSelectedUsers && rolesArray.length === 0) {
+      setPreviewModal({ open: true, recipientCount: null, error: 'Please select at least one target role or choose specific users.' });
+      return;
+    }
+
+    showConfirm('Send this announcement now?', async () => {
+      setIsSending(true);
+      try {
+        const xsrf = await getXsrfToken();
+        const payload = new FormData();
+        payload.append('title', formData.title);
+        payload.append('message', formData.message);
+        payload.append('announcement_mode', 'group');
+
+        rolesArray.forEach((role) => payload.append('roles[]', role));
+
+        if (formData.course_id) payload.append('course_id', formData.course_id);
+        if (selectedDepartment) payload.append('department_id', String(Number(selectedDepartment)));
+        if (selectedSubdepartment) payload.append('subdepartment_id', String(Number(selectedSubdepartment)));
+
+        if (formData.target_user_ids && formData.target_user_ids.length > 0) {
+          formData.target_user_ids.forEach((id) => payload.append('target_user_ids[]', String(id)));
+        }
+
+        announcementImages.forEach((file) => {
+          payload.append('message_images[]', file);
+        });
+
+        const res = await fetch('/api/admin/notifications/announce', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-XSRF-TOKEN': xsrf,
+          },
+          body: payload,
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          setSuccessToast({ show: true, count: data.recipients_count });
+          setIsModalOpen(false);
+          setFormData({ title: '', message: '', roles: [], course_id: '', target_user_ids: [] });
+          setAnnouncementImages([]);
+          setSelectedDepartment('');
+          setSelectedSubdepartment('');
+          fetchSentAnnouncements();
+        } else {
+          setPreviewModal({ open: true, recipientCount: null, error: data.message || 'Failed to send announcement' });
+        }
+      } catch (err) {
+        console.error('Failed to send announcement:', err);
+        setPreviewModal({ open: true, recipientCount: null, error: 'Failed to send announcement' });
+      } finally {
+        setIsSending(false);
+      }
+    });
+  };
+
+  const handlePreview = async () => {
+    const rolesArray = Array.isArray(formData.roles) ? formData.roles : (formData.roles ? [formData.roles] : []);
+    const hasSelectedUsers = Array.isArray(formData.target_user_ids) && formData.target_user_ids.length > 0;
+
     if (isMessageEmpty(formData.message)) {
       setPreviewModal({ open: true, recipientCount: null, error: 'Please enter a message.' });
       return;
@@ -616,6 +718,7 @@ export function NotificationManagement() {
       payload.append('title', formData.title);
       payload.append('message', formData.message);
       payload.append('announcement_mode', 'group');
+      payload.append('preview', '1');
 
       rolesArray.forEach((role) => payload.append('roles[]', role));
 
@@ -626,10 +729,6 @@ export function NotificationManagement() {
       if (formData.target_user_ids && formData.target_user_ids.length > 0) {
         formData.target_user_ids.forEach((id) => payload.append('target_user_ids[]', String(id)));
       }
-
-      announcementImages.forEach((file) => {
-        payload.append('message_images[]', file);
-      });
 
       const res = await fetch('/api/admin/notifications/announce', {
         method: 'POST',
@@ -642,63 +741,10 @@ export function NotificationManagement() {
         body: payload,
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccessToast({ show: true, count: data.recipients_count });
-        setIsModalOpen(false);
-        setFormData({ title: '', message: '', roles: [], course_id: '', target_user_ids: [] });
-        setSelectedUsers([]);
-        setSelectedDepartment('');
-        setSelectedSubdepartment('');
-        setAnnouncementImages([]);
-
-        // Refresh sent history from server
-        fetchSentAnnouncements();
-      } else {
-        const msg = data?.message || `Failed to send announcement (status ${res.status})`;
-        alert(msg);
-      }
-    } catch (err) {
-      console.error('Failed to send announcement:', err);
-      alert('Failed to send announcement');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handlePreview = async () => {
-    const rolesArray = Array.isArray(formData.roles) ? formData.roles : (formData.roles ? [formData.roles] : []);
-    const hasSelectedUsers = Array.isArray(formData.target_user_ids) && formData.target_user_ids.length > 0;
-    if (isMessageEmpty(formData.message)) {
-      setPreviewModal({ open: true, recipientCount: null, error: 'Please enter a message.' });
-      return;
-    }
-    if (!hasSelectedUsers && rolesArray.length === 0) {
-      setPreviewModal({ open: true, recipientCount: null, error: 'Please select at least one target role or choose specific users.' });
-      return;
-    }
-
-    try {
-      // Ensure we have a fresh CSRF cookie when not using token fallback
-      const payload = {
-        title: formData.title,
-        message: formData.message,
-        roles: rolesArray,
-        course_id: formData.course_id || null,
-        department_id: selectedDepartment ? Number(selectedDepartment) : null,
-        subdepartment_id: selectedSubdepartment ? Number(selectedSubdepartment) : null,
-        target_user_ids: hasSelectedUsers ? formData.target_user_ids : null,
-        preview: true,
-      };
-      console.debug('Preview announce payload', payload);
-
-      const res = await fetch('/api/admin/notifications/announce', await fetchOptions('POST', payload));
-
       let data: any = null;
       try {
         data = await res.json();
-      } catch (parseErr) {
+      } catch {
         const text = await res.text().catch(() => null);
         console.error('Failed to parse preview response JSON', { status: res.status, text });
       }
@@ -711,6 +757,8 @@ export function NotificationManagement() {
     } catch (err) {
       console.error('Preview failed:', err);
       setPreviewModal({ open: true, recipientCount: null, error: 'Preview failed' });
+    } finally {
+      setIsSending(false);
     }
   };
 

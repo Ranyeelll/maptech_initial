@@ -563,12 +563,12 @@ export function UserManagement({ currentUserEmail, onLogout }: { currentUserEmai
 
   return (
     <div className="space-y-6 ui-pop-grid um-shell">
-      <div className="relative overflow-visible flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 um-header">
+      <div className="relative z-40 overflow-visible flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 um-header">
         <div className="flex items-center space-x-3">
-          <div className="relative" ref={addUserDropdownRef}>
+          <div className="relative z-50" ref={addUserDropdownRef}>
             <button
               onClick={() => setShowAddUserDropdown(!showAddUserDropdown)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-slate-950 bg-emerald-400 hover:bg-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="um-action-btn inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-slate-950 bg-emerald-400 hover:bg-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add User
@@ -577,25 +577,25 @@ export function UserManagement({ currentUserEmail, onLogout }: { currentUserEmai
               </svg>
             </button>
             {showAddUserDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5">
-                <div className="py-1">
+              <div className="absolute right-0 top-full z-[80] mt-2 w-48">
+                <div className="py-1 rounded-md border border-slate-700/70 bg-slate-900/95 backdrop-blur-sm">
                   <button
                     onClick={() => handleOpenModal(undefined, 'Admin')}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-700 flex items-center"
+                    className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
                   >
                     <span className="w-2 h-2 rounded-full bg-purple-500 mr-3"></span>
                     Add Admin
                   </button>
                   <button
                     onClick={() => handleOpenModal(undefined, 'Instructor')}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-700 flex items-center"
+                    className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
                   >
                     <span className="w-2 h-2 rounded-full bg-blue-500 mr-3"></span>
                     Add Instructor
                   </button>
                   <button
                     onClick={() => handleOpenModal(undefined, 'Employee')}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-700 flex items-center"
+                    className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
                   >
                     <span className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></span>
                     Add Employee
@@ -608,7 +608,7 @@ export function UserManagement({ currentUserEmail, onLogout }: { currentUserEmai
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 dark:bg-slate-900/80 dark:border-slate-700/80 ui-pop-in ui-force-pop um-filter-panel">
+      <div className="relative z-10 bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 dark:bg-slate-900/80 dark:border-slate-700/80 ui-pop-in ui-force-pop um-filter-panel">
         <div className="relative flex-1">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <Search className="h-5 w-5 text-slate-400" />

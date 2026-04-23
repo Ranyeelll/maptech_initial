@@ -444,20 +444,10 @@ export function AdminDashboard({ onNavigate }: Props) {
     enrollments: monthlyTrendsByMonth[index]?.enrollments ?? 0,
     completions: monthlyTrendsByMonth[index]?.completions ?? 0,
   }));
-
-  const ArrowDot = ({ cx, cy, fill }: any) => {
-    if (cx == null || cy == null) return null;
-
-    return (
-      <g>
-        <path
-          d={`M ${cx} ${cy - 5} L ${cx + 7} ${cy} L ${cx} ${cy + 5} L ${cx + 2} ${cy}`}
-          fill={fill}
-          opacity={0.95}
-        />
-      </g>
-    );
-  };
+  const compactMonthlyTrends = fullYearMonthlyTrends.filter(
+    (trend) => trend.enrollments > 0 || trend.completions > 0,
+  );
+  const monthlyTrendChartData = compactMonthlyTrends.length >= 2 ? compactMonthlyTrends : fullYearMonthlyTrends;
 
   const renderCompletionTooltip = ({ active, payload }: any) => {
     if (!active || !payload || payload.length === 0) return null;
@@ -736,15 +726,7 @@ export function AdminDashboard({ onNavigate }: Props) {
               <div className="flex items-center justify-center h-full text-slate-400">No trend data yet</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={fullYearMonthlyTrends} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                  <defs>
-                    <marker id="trend-arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth">
-                      <path d="M 0 0 L 8 4 L 0 8 z" fill="#2db768" />
-                    </marker>
-                    <marker id="trend-arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth">
-                      <path d="M 0 0 L 8 4 L 0 8 z" fill="#5b8def" />
-                    </marker>
-                  </defs>
+                <LineChart data={monthlyTrendChartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="2 6" vertical={false} stroke={chartGridColor} />
                   <XAxis
                     dataKey="name"
@@ -760,8 +742,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                     cursor={false}
                   />
                   <Legend wrapperStyle={{ color: chartLegendColor, fontSize: '12px', paddingTop: '8px' }} />
-                  <Line type="stepAfter" dataKey="enrollments" stroke="#2db768" strokeWidth={2.5} dot={<ArrowDot />} activeDot={{ r: 6, stroke: trendActiveDotStroke, strokeWidth: 2 }} markerEnd="url(#trend-arrow-green)" />
-                  <Line type="stepAfter" dataKey="completions" stroke="#5b8def" strokeWidth={2.5} dot={<ArrowDot />} activeDot={{ r: 6, stroke: trendActiveDotStroke, strokeWidth: 2 }} markerEnd="url(#trend-arrow-blue)" />
+                  <Line type="monotone" dataKey="enrollments" name="Enrollments" stroke="#2db768" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: '#2db768' }} activeDot={{ r: 5, stroke: '#ffffff', strokeWidth: 2 }} strokeLinecap="round" strokeLinejoin="round" isAnimationActive animationBegin={120} animationDuration={1800} animationEasing="ease" />
+                  <Line type="monotone" dataKey="completions" name="Completions" stroke="#5b8def" strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: '#5b8def' }} activeDot={{ r: 5, stroke: '#ffffff', strokeWidth: 2 }} strokeLinecap="round" strokeLinejoin="round" isAnimationActive animationBegin={120} animationDuration={1800} animationEasing="ease" />
                 </LineChart>
               </ResponsiveContainer>
             )}
