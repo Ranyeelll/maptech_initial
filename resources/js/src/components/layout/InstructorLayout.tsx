@@ -208,30 +208,11 @@ export function InstructorLayout({
           </div>
           <div className="flex-shrink-0 flex border-t border-slate-800 p-4">
             <div className="flex-shrink-0 w-full group block">
-              <div className="flex items-center">
-                {user.profile_picture ? (
-                  <img
-                    src={user.profile_picture}
-                    alt={user.name}
-                    className="h-9 w-9 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-amber-400 transition"
-                    onClick={() => setShowPicPreview(true)}
-                  />
-                ) : (
-                  <div className="h-9 w-9 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold">
-                    {(displayName?.charAt(0) ?? 'U').toUpperCase()}
-                  </div>
-                )}
-                <div className={`ml-3 min-w-0 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isSidebarCompact ? 'max-w-0 opacity-0' : 'max-w-[140px] opacity-100'}`}>
-                  <p className="truncate text-sm font-medium text-white">{displayName}</p>
-                  <p className="text-xs font-medium text-slate-400">
-                    Instructor
-                  </p>
-                </div>
+              <div className="flex items-center gap-3">
                 <button
                   onClick={onLogout}
-                  className="ml-auto text-slate-400 hover:text-white transition-colors duration-300"
+                  className="flex-shrink-0 text-slate-400 hover:text-white transition-colors duration-300"
                   title="Logout">
-
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
@@ -310,6 +291,26 @@ export function InstructorLayout({
                 </span>
               </button>
               <NotificationBell role="Instructor" onOpenAll={() => onNavigate('notifications')} />
+
+              {/* Profile block */}
+              <div className="hidden sm:flex items-center gap-3 mr-2">
+                {user.profile_picture ? (
+                  <img
+                    src={user.profile_picture}
+                    alt={user.name}
+                    className="h-9 w-9 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-green-400 transition"
+                    onClick={() => setShowPicPreview(true)}
+                  />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">
+                    {(displayName?.charAt(0) ?? 'U').toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className={`truncate text-sm font-medium ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>{displayName}</p>
+                  <p className="text-xs font-medium text-slate-400">Instructor</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import useConfirm from '../../hooks/useConfirm';
 import {
-  MagnifyingGlassIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  EyeIcon,
-  VideoCameraIcon,
-  AcademicCapIcon,
-  UsersIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  XMarkIcon,
-  CameraIcon,
-} from '@heroicons/react/24/outline';
+  Search as MagnifyingGlassIcon,
+  Plus as PlusIcon,
+  Edit2 as PencilIcon,
+  Trash2 as TrashIcon,
+  Eye as EyeIcon,
+  Video as VideoCameraIcon,
+  GraduationCap as AcademicCapIcon,
+  Users as UsersIcon,
+  ChevronDown as ChevronDownIcon,
+  ChevronRight as ChevronRightIcon,
+  X as XMarkIcon,
+  Camera as CameraIcon,
+  FileText as DocumentPlusIcon,
+} from 'lucide-react';
 import { safeArray } from '../../utils/safe';
 import { LoadingState } from '../../components/ui/LoadingState';
 import PDFViewer from '../../components/PDFViewer';
@@ -34,6 +36,7 @@ interface Course {
   status: 'Active' | 'Draft' | 'Inactive';
   modules_count: number;
   enrolled_count: number;
+  has_manual_unlock?: boolean;
   created_at: string;
 }
 
@@ -102,7 +105,37 @@ function toLocalDateTimeInputValue(value?: string | null): string {
 function getMinDateTimeInputValue(): string {
   const now = new Date();
   now.setSeconds(0, 0);
-  return formatLocalDateTimeInput(now);
+  return formatDateTimeForTimeZone(now, 'Asia/Manila');
+}
+
+function formatDateTimeForTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function toUtcIsoFromManilaInput(value: FormDataEntryValue | null): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(trimmed);
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute] = match;
+  const utcMs = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 8, Number(minute));
+  return new Date(utcMs).toISOString();
 }
 
 function isPastDateTimeInput(value: FormDataEntryValue | null): boolean {
@@ -243,8 +276,19 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
   // Custom module thumbnail upload
   const [uploadingThumbnailModuleId, setUploadingThumbnailModuleId] = useState<number | null>(null);
   const customModuleThumbnailRef = useRef<HTMLInputElement>(null);
+  const [courseUnlockModalOpen, setCourseUnlockModalOpen] = useState(false);
+  const [courseUnlockTarget, setCourseUnlockTarget] = useState<Course | null>(null);
+  const [unlockEmployees, setUnlockEmployees] = useState<UserOption[]>([]);
+  const [selectedUnlockEmployeeId, setSelectedUnlockEmployeeId] = useState<number | ''>('');
+  const [unlockUntil, setUnlockUntil] = useState<string>('');
+  const [unlockPermanent, setUnlockPermanent] = useState(false);
+  const [unlockLoadingEmployees, setUnlockLoadingEmployees] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [unlockSuccessModalOpen, setUnlockSuccessModalOpen] = useState(false);
+  const [unlockSuccessMessage, setUnlockSuccessMessage] = useState('');
   const minDateTimeInput = getMinDateTimeInputValue();
-  const hasOpenModal = Boolean(selectedCourse || showEnrollments || showCreateModal || showEditModal || showBulkAssignModal);
+  const hasOpenModal = Boolean(selectedCourse || showEnrollments || showCreateModal || showEditModal || showBulkAssignModal || courseUnlockModalOpen || unlockSuccessModalOpen);
 
   useEffect(() => {
     if (!hasOpenModal) return;
@@ -418,6 +462,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
       console.log('CoursesAndContent: Starting to load courses');
       setLoading(true);
       setError(null);
+      const manualUnlockLookup = new Map(courses.map((course) => [String(course.id), Boolean(course.has_manual_unlock)]));
 
       // Get CSRF token first
       console.log('CoursesAndContent: Getting CSRF token');
@@ -448,6 +493,9 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
       const rawCourses = Array.isArray(data) ? data : [];
       setCourses(rawCourses.map((c: any) => ({
         ...c,
+        has_manual_unlock: typeof c.has_manual_unlock === 'boolean'
+          ? c.has_manual_unlock
+          : manualUnlockLookup.get(String(c.id)) ?? false,
         status: normalizeCourseStatus(c.status),
         start_date: normalizeApiDateTime(c.start_date),
         deadline: normalizeApiDateTime(c.deadline),
@@ -509,11 +557,15 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
 
       if (response.ok) {
         const data = await response.json();
-        setEnrolledStudents(data);
+        const students = Array.isArray(data) ? data : [];
+        setEnrolledStudents(students);
+        return students;
       }
     } catch (err) {
       console.error('Failed to load enrolled students:', err);
     }
+
+    return [];
   };
 
   // Handle custom module thumbnail upload
@@ -610,7 +662,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
         },
         body: JSON.stringify({
           title: formData.get('title'),
-          description: formData.get('description'),
+          description: editingCourse.description || '',
           department: formData.get('department'),
           subdepartment_id: formData.get('subdepartment_id') || null,
           start_date: toUtcIsoString(formData.get('start_date')),
@@ -687,6 +739,124 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
         alert(err.message);
       }
     });
+  };
+
+  const openCourseUnlockModal = (course: Course) => {
+    setCourseUnlockTarget(course);
+    setSelectedUnlockEmployeeId('');
+    setUnlockUntil(formatDateTimeForTimeZone(new Date(Date.now() + 24 * 60 * 60 * 1000), 'Asia/Manila'));
+    setUnlockPermanent(false);
+    setUnlockError(null);
+    setCourseUnlockModalOpen(true);
+
+    const loadEmployees = async () => {
+      try {
+        setUnlockLoadingEmployees(true);
+        const response = await fetch(`/api/admin/courses/${course.id}/enrollments`, {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+
+        const data = response.ok ? await response.json() : [];
+        const students = safeArray<any>(data);
+        const isNotFinished = (s: any) => {
+          if (!s) return false;
+          if (s.status && String(s.status).toLowerCase() === 'completed') return false;
+          if (typeof s.completed === 'boolean' && s.completed) return false;
+          const prog = Number(s.progress ?? s.completion_percentage ?? s.pivot?.progress ?? 0);
+          if (!Number.isNaN(prog) && prog >= 100) return false;
+          if (s.finished === true) return false;
+          return true;
+        };
+
+        const deadlinePassed = course.deadline ? new Date(course.deadline).getTime() <= Date.now() : false;
+
+        setUnlockEmployees(students.filter((student: any) => {
+          const deptMatches = !course.department || !student.department || String(student.department || '').toLowerCase() === String(course.department).toLowerCase();
+          const subMatches = !course.subdepartment_id || !student.subdepartment_id || Number(student.subdepartment_id ?? 0) === Number(course.subdepartment_id);
+          const activeUnlockUntil = student.unlocked_until ? new Date(student.unlocked_until).getTime() > Date.now() : false;
+          const courseIsEligibleForSecondChance = deadlinePassed || Boolean(student.locked);
+          return isNotFinished(student) && deptMatches && subMatches && courseIsEligibleForSecondChance && !activeUnlockUntil;
+        }).map((student: any) => ({
+          id: student.id,
+          fullName: student.fullname || student.name || '',
+          email: student.email || '',
+          department: course.department,
+          role: 'Employee',
+          subdepartment_id: course.subdepartment_id ?? null,
+          subdepartment_name: getCourseSubdepartmentName(course),
+        })));
+      } catch (err) {
+        console.error('Failed to load unlock employees:', err);
+        setUnlockEmployees([]);
+      } finally {
+        setUnlockLoadingEmployees(false);
+      }
+    };
+
+    void loadEmployees();
+  };
+
+  const handleUnlockCourse = async () => {
+    if (!courseUnlockTarget) return;
+    if (!selectedUnlockEmployeeId) {
+      setUnlockError('Please select an employee to unlock.');
+      return;
+    }
+    if (!unlockPermanent && !unlockUntil.trim()) {
+      setUnlockError('Please set an unlock until date/time or mark the unlock as permanent.');
+      return;
+    }
+
+    setUnlocking(true);
+    setUnlockError(null);
+
+    try {
+      const csrf = await getCsrf();
+      const payload: Record<string, unknown> = {};
+      if (!unlockPermanent) {
+        payload.expires_at = toUtcIsoFromManilaInput(unlockUntil) ?? undefined;
+      }
+
+      const response = await fetch(`/api/admin/courses/${courseUnlockTarget.id}/enrollments/${selectedUnlockEmployeeId}/unlock`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': csrf,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to unlock employee');
+      }
+
+      const selectedEmployee = unlockEmployees.find((employee) => Number(employee.id) === Number(selectedUnlockEmployeeId));
+      const selectedEmployeeName = selectedEmployee?.fullName || 'employee';
+      const selectedCourseTitle = courseUnlockTarget.title;
+
+      // Remove the unlocked employee from the dropdown so they cannot be selected again immediately
+      setUnlockEmployees((prev) => prev.filter((e) => Number(e.id) !== Number(selectedUnlockEmployeeId)));
+      // Notify any open employee/course viewer in this browser tab to reload
+      try { window.dispatchEvent(new CustomEvent('course:unlocked', { detail: { courseId: courseUnlockTarget?.id } })); } catch (e) { /* ignore */ }
+      setCourseUnlockModalOpen(false);
+      setCourseUnlockTarget(null);
+      setSelectedUnlockEmployeeId('');
+      setUnlockUntil('');
+      setUnlockPermanent(false);
+      await loadCourses();
+      setUnlockSuccessMessage(`Successfully unlocked ${selectedCourseTitle} for ${selectedEmployeeName}.`);
+      setUnlockSuccessModalOpen(true);
+    } catch (err: any) {
+      const message = err?.message || 'Failed to unlock employee';
+      setUnlockError(message);
+      alert(message);
+    } finally {
+      setUnlocking(false);
+    }
   };
 
   // ── Helper: get XSRF token from cookie ──
@@ -1097,7 +1267,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
     const badges = {
       Active: 'bg-green-100 text-green-800 dark:bg-emerald-500/20 dark:text-emerald-300',
       Draft: 'bg-yellow-100 text-yellow-800 dark:bg-amber-500/20 dark:text-amber-300',
-      Inactive: 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200'
+      Inactive: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
     };
     return badges[status as keyof typeof badges] || badges.Draft;
   };
@@ -1134,7 +1304,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
         {/* Continue with regular interface */}
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Course Management</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Course Management</h1>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1209,7 +1379,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Course Management</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Course Management</h1>
         <button
           type="button"
           onClick={() => {
@@ -1218,7 +1388,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
             setCreateInstructorId(null);
             setShowCreateModal(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
           Create Course
@@ -1228,17 +1398,17 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
       {/* Search and Filter */}
       <div className="course-toolbar-animate flex flex-col sm:flex-row gap-4 mb-6">
         <div className="flex-1 relative">
-          <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" />
+          <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400" />
           <input
             type="text"
             placeholder="Search courses..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 placeholder-slate-500 focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <select
-          className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+          className="px-4 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
@@ -1251,15 +1421,35 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
 
       {/* Courses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCourses.map((course, index) => (
+        {filteredCourses.map((course, index) => {
+          const hasManualUnlock = Boolean((course as any).has_manual_unlock);
+          const notStarted = Boolean(course.start_date && new Date(course.start_date) > new Date());
+          const ended = Boolean(course.deadline && new Date(course.deadline) <= new Date() && !hasManualUnlock);
+          const modulesCount = course.modules_count ?? ((course as any).modules?.length ?? 0);
+          const hasAnyModule = modulesCount > 0;
+          const showNotAvailable = !notStarted && !ended && course.status === 'Active' && !hasAnyModule;
+          const badgeClass = notStarted
+            ? 'bg-slate-100 text-slate-600'
+            : ended
+              ? 'bg-red-100 text-red-800'
+              : showNotAvailable
+                ? 'bg-slate-100 text-slate-700'
+                : getStatusBadge(course.status);
+          const badgeLabel = notStarted ? 'Not Started' : ended ? 'Locked' : showNotAvailable ? 'Not available' : course.status;
+
+          return (
           <div
             key={course.id}
-            className="course-management-card group relative bg-white border border-slate-200 rounded-xl shadow hover:shadow-lg transition-all dark:bg-slate-900/90 dark:border-slate-700/80 dark:shadow-[0_12px_32px_rgba(2,6,23,0.35)] flex flex-col"
+            className="course-management-card group relative bg-white border border-slate-200 rounded-lg shadow hover:shadow-lg transition-all dark:bg-slate-900/90 dark:border-slate-700/80 dark:shadow-[0_12px_32px_rgba(2,6,23,0.35)] flex flex-col"
             style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
           >
             {/* Course Icon */}
-            <div className="h-28 bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-teal-500 rounded-t-xl flex items-center justify-center">
-              <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-full overflow-hidden flex items-center justify-center border-4 border-white/80 dark:border-slate-300/40 shadow-md">
+            <div className="h-28 bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-teal-500 rounded-t-lg flex items-center justify-center relative">
+              <div className="absolute top-2 right-2 px-2.5 h-7 rounded-full bg-white/95 text-slate-800 text-xs font-semibold flex items-center justify-center border border-white/70 shadow z-10 pointer-events-none" title={`${modulesCount} modules`}>
+                <span className="mr-1 text-emerald-600">●</span>
+                {modulesCount} Modules
+              </div>
+              <div className="w-16 h-16 bg-white dark:bg-slate-900 rounded-full overflow-hidden flex items-center justify-center border-4 border-white/80 dark:border-slate-300/40 shadow-md relative">
                 {course.instructor_profile_picture ? (
                   <img src={course.instructor_profile_picture} alt={course.instructor} className="w-full h-full object-cover" />
                 ) : course.instructor !== 'Unassigned' ? (
@@ -1276,20 +1466,20 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
             <div className="p-5 flex flex-col flex-1">
               {/* Status Badge */}
               <div className="flex justify-between items-start mb-3">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusBadge(course.status)}`}>
-                  {course.status}
+                <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${badgeClass}`}>
+                  {badgeLabel}
                 </span>
                 <div className="flex space-x-1">
                   <button
                     onClick={() => handleEditCourse(course)}
-                    className="course-card-icon-btn p-1.5 rounded-md text-gray-600 hover:text-amber-700 hover:bg-amber-50 dark:text-slate-300 dark:hover:text-amber-300 dark:hover:bg-slate-800"
+                    className="course-card-icon-btn p-1.5 rounded-md text-slate-600 hover:text-amber-700 hover:bg-amber-50 dark:text-slate-300 dark:hover:text-amber-300 dark:hover:bg-slate-800"
                     title="Edit"
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteCourse(course)}
-                    className="course-card-icon-btn p-1.5 rounded-md text-gray-600 hover:text-rose-700 hover:bg-rose-50 dark:text-slate-300 dark:hover:text-rose-300 dark:hover:bg-slate-800"
+                    className="course-card-icon-btn p-1.5 rounded-md text-slate-600 hover:text-rose-700 hover:bg-rose-50 dark:text-slate-300 dark:hover:text-rose-300 dark:hover:bg-slate-800"
                     title="Delete"
                   >
                     <TrashIcon className="h-4 w-4" />
@@ -1298,17 +1488,13 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               </div>
 
               {/* Course Title */}
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-2 leading-tight">{course.title}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2 leading-tight">{course.title}</h3>
 
               {/* Stats */}
-              <div className="flex items-center text-sm text-gray-600 dark:text-slate-300 mb-4 space-x-4">
+              <div className="flex items-center text-sm text-slate-600 dark:text-slate-300 mb-4">
                 <div className="flex items-center">
                   <UsersIcon className="h-4 w-4 mr-1" />
                   {course.enrolled_count} Enrolled
-                </div>
-                <div className="flex items-center">
-                  <AcademicCapIcon className="h-4 w-4 mr-1" />
-                  {course.modules_count} Modules
                 </div>
               </div>
 
@@ -1318,10 +1504,10 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   <img
                     src={course.instructor_profile_picture}
                     alt={course.instructor}
-                    className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-slate-600 flex-shrink-0"
+                    className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-600 flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-emerald-500/20 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-emerald-500/20 border border-slate-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-semibold text-green-700 dark:text-emerald-300">
                       {course.instructor !== 'Unassigned'
                         ? course.instructor.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -1329,30 +1515,49 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     </span>
                   </div>
                 )}
-                <div className="text-sm text-gray-600 dark:text-slate-300">
-                  <div className="font-medium text-gray-700 dark:text-slate-200">
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                  <div className="font-medium text-slate-700 dark:text-slate-200">
                     {course.department}{getCourseSubdepartmentName(course) ? ` / ${getCourseSubdepartmentName(course)}` : ''}
                   </div>
                   <div>{course.instructor}</div>
                 </div>
               </div>
 
-              {/* Manage Content Button */}
-              <button
-                onClick={() => onNavigate?.('course-detail', String(course.id))}
-                className="course-manage-button mt-auto w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Manage Content →
-              </button>
+              {notStarted && course.start_date && (
+                <p className="text-xs text-slate-500 dark:text-slate-300 mb-3">
+                  Course has not started yet - Starts on: {new Date(course.start_date).toLocaleDateString()} {new Date(course.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+              {ended && (
+                <p className="text-xs text-red-500 font-medium mb-3">Course has ended and is locked</p>
+              )}
+
+              <div className="mt-auto pt-3 border-t border-slate-100 space-y-2">
+                <button
+                  onClick={() => onNavigate?.('course-detail', String(course.id))}
+                  className="course-manage-button w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors font-medium"
+                >
+                  Manage Content →
+                </button>
+                {ended && (
+                  <button
+                    onClick={() => openCourseUnlockModal(course)}
+                    className="w-full text-sm px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  >
+                    Unlock
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {/* Custom Modules Cards */}
         {filteredCustomModules.map((module) => (
-          <div key={`custom-${module.id}`} className="relative bg-white border border-slate-200 rounded-xl shadow hover:shadow-lg transition-all dark:bg-slate-900/90 dark:border-slate-700/80 dark:shadow-[0_12px_32px_rgba(2,6,23,0.35)] flex flex-col">
+          <div key={`custom-${module.id}`} className="relative bg-white border border-slate-200 rounded-lg shadow hover:shadow-lg transition-all dark:bg-slate-900/90 dark:border-slate-700/80 dark:shadow-[0_12px_32px_rgba(2,6,23,0.35)] flex flex-col">
             {/* Custom Module Icon */}
-            <div className="h-28 bg-gradient-to-br from-purple-400 to-purple-600 dark:from-purple-500 dark:to-indigo-500 rounded-t-xl flex items-center justify-center relative">
+            <div className="h-28 bg-gradient-to-br from-purple-400 to-purple-600 dark:from-purple-500 dark:to-indigo-500 rounded-t-lg flex items-center justify-center relative">
               {/* Custom Module Badge */}
               <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 dark:bg-slate-800/90 rounded-full text-xs font-medium text-purple-700 dark:text-purple-300">
                 Custom Module
@@ -1392,21 +1597,21 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     ? 'bg-green-100 text-green-800 dark:bg-emerald-500/20 dark:text-emerald-300'
                     : module.status === 'draft'
                     ? 'bg-yellow-100 text-yellow-800 dark:bg-amber-500/20 dark:text-amber-300'
-                    : 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-200'
+                    : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
                 }`}>
                   {module.status}
                 </span>
                 <div className="flex space-x-1">
                   <button
                     onClick={() => onNavigate?.('custom-field', undefined, module.id)}
-                    className="p-1.5 rounded-md text-gray-600 hover:text-blue-700 hover:bg-blue-50 dark:text-slate-300 dark:hover:text-sky-300 dark:hover:bg-slate-800"
+                    className="p-1.5 rounded-md text-slate-600 hover:text-blue-700 hover:bg-blue-50 dark:text-slate-300 dark:hover:text-sky-300 dark:hover:bg-slate-800"
                     title="View Module Details"
                   >
                     <EyeIcon className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => onNavigate?.('custom-field', undefined, module.id)}
-                    className="p-1.5 rounded-md text-gray-600 hover:text-amber-700 hover:bg-amber-50 dark:text-slate-300 dark:hover:text-amber-300 dark:hover:bg-slate-800"
+                    className="p-1.5 rounded-md text-slate-600 hover:text-amber-700 hover:bg-amber-50 dark:text-slate-300 dark:hover:text-amber-300 dark:hover:bg-slate-800"
                     title="Edit Module"
                   >
                     <PencilIcon className="h-4 w-4" />
@@ -1415,30 +1620,30 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               </div>
 
               {/* Module Title */}
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-2 leading-tight">{module.title}</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2 leading-tight">{module.title}</h3>
 
               {/* Stats */}
-              <div className="flex items-center text-sm text-gray-600 dark:text-slate-300 mb-4 space-x-4">
+              <div className="flex items-center text-sm text-slate-600 dark:text-slate-300 mb-4 space-x-4">
                 <div className="flex items-center">
                   <AcademicCapIcon className="h-4 w-4 mr-1" />
                   {module.lessons_count} Lessons
                 </div>
-                <div className="flex items-center text-xs text-gray-500">
+                <div className="flex items-center text-xs text-slate-500">
                   v{module.version}
                 </div>
               </div>
 
               {/* Category and Creator */}
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-500/20 border border-gray-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-500/20 border border-slate-200 dark:border-slate-600 flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
                     {module.creator
                       ? module.creator.fullname.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
                       : '?'}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-slate-300">
-                  <div className="font-medium text-gray-700 dark:text-slate-200">{module.category || 'Uncategorized'}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                  <div className="font-medium text-slate-700 dark:text-slate-200">{module.category || 'Uncategorized'}</div>
                   <div>{module.creator?.fullname || 'Unknown'}</div>
                 </div>
               </div>
@@ -1446,7 +1651,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               {/* Manage Content Button */}
               <button
                 onClick={() => onNavigate?.('custom-field', undefined, module.id)}
-                className="mt-auto w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                className="mt-auto w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition-colors font-medium"
               >
                 Manage Content →
               </button>
@@ -1458,9 +1663,9 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
       {/* Empty State */}
       {filteredCourses.length === 0 && filteredCustomModules.length === 0 && (
         <div className="text-center py-12">
-          <AcademicCapIcon className="h-12 w-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">No courses found</h3>
-          <p className="text-gray-600 dark:text-slate-300 mb-4">
+          <AcademicCapIcon className="h-12 w-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">No courses found</h3>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">
             {searchTerm || statusFilter !== 'all'
               ? 'Try adjusting your search or filter criteria'
               : 'Get started by creating your first course'
@@ -1478,25 +1683,25 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
             <div className="p-6 border-b shrink-0">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedCourse.title}</h2>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                  <h2 className="text-lg font-semibold text-slate-900">{selectedCourse.title}</h2>
+                  <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                     <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">{selectedCourse.department}</span>
                     {selectedCourse.instructor && (
-                      <span className="text-gray-500">Instructor: <span className="font-medium text-gray-700">{selectedCourse.instructor}</span></span>
+                      <span className="text-slate-500">Instructor: <span className="font-medium text-slate-700">{selectedCourse.instructor}</span></span>
                     )}
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusBadge(selectedCourse.status)}`}>{selectedCourse.status}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => { setShowEnrollments(false); setActivePanel('modules'); setSelectedModuleId(null); }}
-                  className="text-gray-400 hover:text-gray-600 text-xl"
+                  className="text-slate-400 hover:text-slate-600"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
 
               {/* Tab Navigation */}
-              <div className="flex space-x-1 mt-4 bg-gray-100 rounded-lg p-1">
+              <div className="flex space-x-1 mt-4 bg-slate-100 rounded-lg p-1">
                 {[
                   { key: 'modules', label: 'Modules', icon: DocumentPlusIcon, color: 'text-blue-600' },
                   { key: 'upload', label: 'Upload Content', icon: VideoCameraIcon, color: 'text-purple-600' },
@@ -1511,8 +1716,8 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
                       activePanel === tab.key
-                        ? 'bg-white shadow text-gray-900 dark:bg-slate-800 dark:text-slate-100'
-                        : 'text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-slate-100'
+                        ? 'bg-white shadow text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
                     }`}
                   >
                     <tab.icon className={`h-4 w-4 ${activePanel === tab.key ? tab.color : ''}`} />
@@ -1534,13 +1739,13 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       value={newModuleTitle}
                       onChange={e => setNewModuleTitle(e.target.value)}
                       placeholder="New module title..."
-                      className="flex-1 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-md py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="flex-1 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       onKeyDown={e => { if (e.key === 'Enter') handleAddModule(); }}
                     />
                     <button
                       onClick={handleAddModule}
                       disabled={isSubmitting || !newModuleTitle.trim()}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
                     >
                       <PlusIcon className="h-4 w-4" /> Add Module
                     </button>
@@ -1549,54 +1754,54 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   {loadingModules ? (
                     <LoadingState message="Loading modules" />
                   ) : courseModules.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 dark:text-slate-300">No modules yet. Add one above.</div>
+                    <div className="text-center py-8 text-slate-500 dark:text-slate-300">No modules yet. Add one above.</div>
                   ) : (
                     <div className="space-y-3">
                       {safeArray(courseModules).map((mod) => (
-                        <div key={mod.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div key={mod.id} className="border border-slate-200 rounded-lg overflow-hidden">
                           {/* Module Header */}
-                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                             onClick={() => setCourseModules(prev => prev.map(m => m.id === mod.id ? { ...m, isOpen: !m.isOpen } : m))}
                           >
                             <div className="flex items-center gap-2">
                               {mod.isOpen
-                                ? <ChevronDownIcon className="h-5 w-5 text-gray-500 dark:text-slate-300" />
-                                : <ChevronRightIcon className="h-5 w-5 text-gray-500 dark:text-slate-300" />
+                                ? <ChevronDownIcon className="h-5 w-5 text-slate-500 dark:text-slate-300" />
+                                : <ChevronRightIcon className="h-5 w-5 text-slate-500 dark:text-slate-300" />
                               }
                               {editingModuleId === mod.id ? (
                                 <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                                   <input
                                     value={editModuleTitle}
                                     onChange={e => setEditModuleTitle(e.target.value)}
-                                    className="border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded px-2 py-1 text-sm"
+                                    className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded px-2 py-1 text-sm"
                                     onKeyDown={e => { if (e.key === 'Enter') handleUpdateModule(mod.id); }}
                                   />
                                   <button onClick={() => handleUpdateModule(mod.id)} className="text-green-600 text-sm font-medium">Save</button>
-                                  <button onClick={() => setEditingModuleId(null)} className="text-gray-500 dark:text-slate-300 text-sm">Cancel</button>
+                                  <button onClick={() => setEditingModuleId(null)} className="text-slate-500 dark:text-slate-300 text-sm">Cancel</button>
                                 </div>
                               ) : (
-                                <span className="font-medium text-gray-900 dark:text-slate-100">{mod.title}</span>
+                                <span className="font-medium text-slate-900 dark:text-slate-100">{mod.title}</span>
                               )}
                             </div>
                             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                              <span className="text-xs text-gray-500">{safeArray(mod.lessons).length || 0} lessons</span>
+                              <span className="text-xs text-slate-500">{safeArray(mod.lessons).length || 0} lessons</span>
                               <button
                                 onClick={() => { setSelectedModuleId(mod.id); setActivePanel('upload'); }}
-                                className="p-1 text-gray-400 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                                className="p-1 text-slate-400 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
                                 title="Upload Content to this module"
                               >
                                 <PlusIcon className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => { setEditingModuleId(mod.id); setEditModuleTitle(mod.title); }}
-                                className="p-1 text-gray-400 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-amber-300"
+                                className="p-1 text-slate-400 dark:text-slate-400 hover:text-yellow-600 dark:hover:text-amber-300"
                                 title="Rename"
                               >
                                 <PencilIcon className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteModule(mod.id)}
-                                className="p-1 text-gray-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-rose-300"
+                                className="p-1 text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-rose-300"
                                 title="Delete Module"
                               >
                                 <TrashIcon className="h-4 w-4" />
@@ -1614,35 +1819,35 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                               )}
                               {safeArray(mod.lessons).length > 0 ? (
                                 safeArray(mod.lessons).map((lesson: any) => (
-                                  <div key={lesson.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setPreviewLesson(lesson)}>
+                                  <div key={lesson.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setPreviewLesson(lesson)}>
                                     <div className="flex items-center gap-2">
                                       {lesson.type === 'Video' ? (
                                         <VideoCameraIcon className="h-4 w-4 text-purple-500" />
                                       ) : lesson.type === 'Document' ? (
                                         <DocumentPlusIcon className="h-4 w-4 text-blue-500" />
                                       ) : (
-                                        <DocumentPlusIcon className="h-4 w-4 text-gray-500 dark:text-slate-300" />
+                                        <DocumentPlusIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                                       )}
-                                      <span className="text-sm text-gray-800 dark:text-slate-100">{lesson.title}</span>
+                                      <span className="text-sm text-slate-800 dark:text-slate-100">{lesson.title}</span>
                                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                                         lesson.status === 'Published' || lesson.status === 'published'
                                           ? 'bg-green-100 text-green-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                           : 'bg-yellow-100 text-yellow-700 dark:bg-amber-900/30 dark:text-amber-300'
                                       }`}>{lesson.status || 'Draft'}</span>
-                                      {lesson.duration && <span className="text-xs text-gray-400 dark:text-slate-300">• {lesson.duration}</span>}
-                                      {lesson.file_size && <span className="text-xs text-gray-400 dark:text-slate-300">• {lesson.file_size}</span>}
+                                      {lesson.duration && <span className="text-xs text-slate-400 dark:text-slate-300">• {lesson.duration}</span>}
+                                      {lesson.file_size && <span className="text-xs text-slate-400 dark:text-slate-300">• {lesson.file_size}</span>}
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <button
                                         onClick={(e) => { e.stopPropagation(); setPreviewLesson(lesson); }}
-                                        className="p-1 text-gray-400 dark:text-slate-400 hover:text-blue-600 dark:hover:text-sky-300"
+                                        className="p-1 text-slate-400 dark:text-slate-400 hover:text-blue-600 dark:hover:text-sky-300"
                                         title="Preview"
                                       >
                                         <EyeIcon className="h-4 w-4" />
                                       </button>
                                       <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lesson.id); }}
-                                        className="p-1 text-gray-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-rose-300"
+                                        className="p-1 text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-rose-300"
                                         title="Delete Lesson"
                                       >
                                         <TrashIcon className="h-4 w-4" />
@@ -1651,7 +1856,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                                   </div>
                                 ))
                               ) : (
-                                <div className="text-sm text-gray-400 py-2 flex items-center justify-between">
+                                <div className="text-sm text-slate-400 py-2 flex items-center justify-between">
                                   <span>No lessons yet.</span>
                                   <button
                                     onClick={e => { e.stopPropagation(); setSelectedModuleId(mod.id); setActivePanel('upload'); }}
@@ -1673,27 +1878,27 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               {/* ── UPLOAD CONTENT PANEL ── */}
               {activePanel === 'upload' && (
                 <div className="max-w-lg mx-auto">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Learning Content</h3>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Upload Learning Content</h3>
                   <div className="space-y-4">
                     {/* Lesson Title */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Lesson Title</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Lesson Title</label>
                       <input
                         type="text"
                         value={uploadTitle}
                         onChange={e => setUploadTitle(e.target.value)}
                         placeholder="e.g. Introduction to Encryption"
-                        className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       />
                     </div>
 
                     {/* Target Module */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Target Module</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Target Module</label>
                       <select
                         value={selectedModuleId || ''}
                         onChange={e => setSelectedModuleId(Number(e.target.value) || null)}
-                        className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       >
                         <option value="">-- Choose a module --</option>
                         {safeArray(courseModules).map(m => (
@@ -1704,7 +1909,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
 
                     {/* Content Type Buttons */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Content Type</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Content Type</label>
                       <div className="grid grid-cols-3 gap-3">
                         {[
                           { key: 'Video', icon: VideoCameraIcon, label: 'Video' },
@@ -1718,7 +1923,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                             className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-colors ${
                               uploadType === ct.key
                                 ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                : 'border-slate-200 hover:border-slate-300 text-slate-600'
                             }`}
                           >
                             <ct.icon className="h-6 w-6" />
@@ -1730,11 +1935,11 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
 
                     {/* Status */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                       <select
                         value={uploadStatus}
                         onChange={e => setUploadStatus(e.target.value as any)}
-                        className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       >
                         <option value="Draft">Draft</option>
                         <option value="Published">Published</option>
@@ -1747,22 +1952,22 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                         onDragOver={e => e.preventDefault()}
                         onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]); }}
                         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                          uploadFile ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-purple-400'
+                          uploadFile ? 'border-green-400 bg-green-50' : 'border-slate-300 hover:border-purple-400'
                         }`}
                       >
                         {uploadFile ? (
                           <div className="flex items-center justify-center gap-2 text-green-700">
                             <span className="text-green-500">&#10003;</span>
                             <span className="text-sm font-medium">{uploadFile.name}</span>
-                            <span className="text-xs text-gray-500">({(uploadFile.size / 1024 / 1024).toFixed(1)} MB)</span>
+                            <span className="text-xs text-slate-500">({(uploadFile.size / 1024 / 1024).toFixed(1)} MB)</span>
                             <button onClick={() => { setUploadFile(null); setUploadDuration(''); }} className="ml-2 text-red-400 hover:text-red-600">
                               <XMarkIcon className="h-4 w-4" />
                             </button>
                           </div>
                         ) : (
                           <div>
-                            <VideoCameraIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-600 mb-2">Drag & drop your file here, or</p>
+                            <VideoCameraIcon className="h-10 w-10 text-slate-400 mx-auto mb-2" />
+                            <p className="text-sm text-slate-600 mb-2">Drag & drop your file here, or</p>
                             <label className="cursor-pointer inline-block px-4 py-2 bg-purple-50 text-purple-700 rounded-md text-sm font-semibold hover:bg-purple-100">
                               Browse Files
                               <input
@@ -1772,7 +1977,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                                 onChange={e => handleFileSelect(e.target.files?.[0] || null)}
                               />
                             </label>
-                            <p className="text-xs text-gray-400 mt-2">
+                            <p className="text-xs text-slate-400 mt-2">
                               {uploadType === 'Video' ? 'MP4, WebM, AVI up to 500MB' : 'PDF, DOC, DOCX, PPT, PPTX, TXT up to 500MB'}
                             </p>
                           </div>
@@ -1783,13 +1988,13 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     {/* Text Input */}
                     {uploadType === 'Text' && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Text Content</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Text Content</label>
                         <textarea
                           value={uploadText}
                           onChange={e => setUploadText(e.target.value)}
                           rows={8}
                           placeholder="Enter your text content here..."
-                          className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                         />
                       </div>
                     )}
@@ -1797,11 +2002,11 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     {/* Upload Progress Bar */}
                     {isUploading && (
                       <div className="space-y-1">
-                        <div className="flex justify-between text-xs text-gray-600">
+                        <div className="flex justify-between text-xs text-slate-600">
                           <span>Uploading...</span>
                           <span>{uploadProgress}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-slate-200 rounded-full h-2">
                           <div
                             className="bg-purple-600 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${uploadProgress}%` }}
@@ -1831,13 +2036,13 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               {/* ── CREATE QUIZ PANEL ── */}
               {activePanel === 'quiz' && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Pre-Assessment Quiz</h3>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Create Pre-Assessment Quiz</h3>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Module</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Select Module</label>
                     <select
                       value={selectedModuleId || ''}
                       onChange={e => setSelectedModuleId(Number(e.target.value) || null)}
-                      className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     >
                       <option value="">-- Choose a module --</option>
                       {safeArray(courseModules).map(m => (
@@ -1849,9 +2054,9 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   {/* Questions */}
                   <div className="space-y-4 mb-4">
                     {quizQuestions.map((q, qi) => (
-                      <div key={qi} className="border border-gray-200 rounded-lg p-4">
+                      <div key={qi} className="border border-slate-200 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium text-gray-700">Question {qi + 1}</span>
+                          <span className="text-sm font-medium text-slate-700">Question {qi + 1}</span>
                           <button
                             onClick={() => setQuizQuestions(prev => prev.filter((_, i) => i !== qi))}
                             className="text-red-500 hover:text-red-700 text-sm"
@@ -1868,7 +2073,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                             setQuizQuestions(updated);
                           }}
                           placeholder="Enter question..."
-                          className="w-full border border-gray-300 rounded-md py-2 px-3 mb-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          className="w-full border border-slate-300 rounded-md py-2 px-3 mb-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         />
                         <div className="space-y-2">
                           {safeArray(q.options).map((opt: string, oi: number) => (
@@ -1895,12 +2100,12 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                                   setQuizQuestions(updated);
                                 }}
                                 placeholder={`Option ${oi + 1}`}
-                                className="flex-1 border border-gray-300 rounded-md py-1 px-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                className="flex-1 border border-slate-300 rounded-md py-1 px-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                               />
                             </div>
                           ))}
                         </div>
-                        <p className="text-xs text-gray-400 mt-2">Select the radio button next to the correct answer.</p>
+                        <p className="text-xs text-slate-400 mt-2">Select the radio button next to the correct answer.</p>
                       </div>
                     ))}
                   </div>
@@ -1908,7 +2113,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   <div className="flex gap-3">
                     <button
                       onClick={addQuizQuestion}
-                      className="flex items-center gap-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50"
+                      className="flex items-center gap-1 border border-slate-300 text-slate-700 px-4 py-2 rounded-md hover:bg-slate-50"
                     >
                       <PlusIcon className="h-4 w-4" /> Add Question
                     </button>
@@ -1934,7 +2139,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       <select
                         value={sendQuizModuleId || ''}
                         onChange={e => setSendQuizModuleId(Number(e.target.value) || null)}
-                        className="flex-1 border border-blue-300 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        className="flex-1 border border-slate-300 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
                       >
                         <option value="">-- Select module with quiz --</option>
                         {courseModules
@@ -1948,7 +2153,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       <button
                         onClick={handleSendQuiz}
                         disabled={sendingQuiz || !sendQuizModuleId}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm whitespace-nowrap"
+                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm whitespace-nowrap"
                       >
                         {sendingQuiz ? 'Sending...' : 'Send Quiz'}
                       </button>
@@ -1958,24 +2163,24 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     )}
                   </div>
 
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">
                     Enrolled Students ({enrolledStudents.length})
                   </h3>
 
                   {/* Search & Enroll */}
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Add Student</label>
+                  <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Add Student</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={enrollSearchTerm}
                         onChange={e => setEnrollSearchTerm(e.target.value)}
                         placeholder="Search by name or email..."
-                        className="flex-1 border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        className="flex-1 border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                       />
                     </div>
                     {enrollSearchTerm.trim() && (
-                      <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md bg-white">
+                      <div className="mt-2 max-h-40 overflow-y-auto border border-slate-200 rounded-md bg-white">
                         {availableUsers
                           .filter(u => {
                             const term = enrollSearchTerm.toLowerCase();
@@ -1990,10 +2195,10 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                             <button
                               key={u.id}
                               onClick={() => { handleEnrollStudent(u.id); setEnrollSearchTerm(''); }}
-                              className="w-full text-left px-3 py-2 hover:bg-orange-50 border-b border-gray-100 last:border-0"
+                              className="w-full text-left px-3 py-2 hover:bg-orange-50 border-b border-slate-100 last:border-0"
                             >
-                              <div className="text-sm font-medium text-gray-900">{u.fullName}</div>
-                              <div className="text-xs text-gray-500">{u.email} &middot; {u.department || 'No Dept'}</div>
+                              <div className="text-sm font-medium text-slate-900">{u.fullName}</div>
+                              <div className="text-xs text-slate-500">{u.email} &middot; {u.department || 'No Dept'}</div>
                             </button>
                           ))}
                         {safeArray<UserOption>(availableUsers).filter(u => {
@@ -2004,7 +2209,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                             u.email.toLowerCase().includes(term)
                           );
                         }).length === 0 && (
-                          <div className="px-3 py-2 text-sm text-gray-500">No matching users found.</div>
+                          <div className="px-3 py-2 text-sm text-slate-500">No matching users found.</div>
                         )}
                       </div>
                     )}
@@ -2014,27 +2219,27 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   {enrolledStudents.length > 0 ? (
                     <div className="space-y-2">
                       {enrolledStudents.map((student) => (
-                        <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div key={student.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                           <div>
-                            <div className="font-medium text-gray-900">{student.name}</div>
-                            <div className="text-sm text-gray-600">{student.email}</div>
+                            <div className="font-medium text-slate-900">{student.name}</div>
+                            <div className="text-sm text-slate-600">{student.email}</div>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="text-right">
-                              <div className="text-sm text-gray-600">
+                              <div className="text-sm text-slate-600">
                                 {student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : 'N/A'}
                               </div>
                               <span className={`px-2 py-1 rounded-full text-xs ${
                                 student.status === 'active'
                                   ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  : 'bg-slate-100 text-slate-800'
                               }`}>
                                 {student.status}
                               </span>
                             </div>
                             <button
                               onClick={() => handleUnenrollStudent(student.id)}
-                              className="p-1 text-gray-400 hover:text-red-600"
+                              className="p-1 text-slate-400 hover:text-red-600"
                               title="Unenroll"
                             >
                               <TrashIcon className="h-4 w-4" />
@@ -2044,7 +2249,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-slate-500">
                       No students enrolled in this course yet.
                     </div>
                   )}
@@ -2061,17 +2266,17 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Bulk Assign Courses</h3>
-              <button onClick={() => setShowBulkAssignModal(false)} className="text-gray-400 hover:text-gray-600"><XMarkIcon className="h-5 w-5"/></button>
+              <button onClick={() => setShowBulkAssignModal(false)} className="text-slate-400 hover:text-slate-600"><XMarkIcon className="h-5 w-5"/></button>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">Assign {selectedCourseIds.length} selected course(s) to an instructor. Choose 'Unassigned' to clear assignment.</p>
+            <p className="text-sm text-slate-600 mb-4">Assign {selectedCourseIds.length} selected course(s) to an instructor. Choose 'Unassigned' to clear assignment.</p>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Instructor</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Instructor</label>
               <select
                 value={bulkInstructorId ?? ''}
                 onChange={(e) => setBulkInstructorId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full border border-gray-300 rounded-md py-2 px-3"
+                className="w-full border border-slate-300 rounded-md py-2 px-3"
               >
                 <option value="">Unassigned</option>
                 {instructors.map(i => (
@@ -2112,7 +2317,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     setIsBulkAssigning(false);
                   }
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
                 disabled={isBulkAssigning}
               >
                 {isBulkAssigning ? 'Assigning...' : 'Assign'}
@@ -2192,15 +2397,8 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  placeholder="Brief course description..."
-                  className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
+              {/* Description removed - now editable in Manage Content */}
+              <input type="hidden" name="description" value="Self Pace" />
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
@@ -2342,37 +2540,30 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="course-editor-modal bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Edit Course</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Edit Course</h2>
               <button
                 onClick={() => { setShowEditModal(false); setEditingCourse(null); setEditInstructorPhotoFile(null); setEditInstructorPhotoPreview(null); }}
-                className="text-gray-400 hover:text-gray-600 text-xl"
+                className="text-slate-400 hover:text-slate-600"
               >
-                ✕
+                <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Course Title</label>
                 <input
                   name="title"
                   type="text"
                   defaultValue={editingCourse.title}
                   required
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  defaultValue={editingCourse.description}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
+              {/* Description removed - now editable in Manage Content */}
+              <input type="hidden" name="description" value={editingCourse.description} />
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
                   <select
                     name="department"
                     value={editDepartment}
@@ -2382,7 +2573,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       setEditInstructorId(null);
                     }}
                     required
-                    className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   >
                     <option value="" disabled>Select Department</option>
                     {departments.map(dept => (
@@ -2391,11 +2582,11 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
                   <select
                     name="status"
                     defaultValue={editingCourse.status}
-                    className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   >
                     <option value="Active">Active</option>
                     <option value="Draft">Draft</option>
@@ -2404,7 +2595,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sub Department</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sub Department</label>
                 <select
                   name="subdepartment_id"
                   value={editSubdepartmentId}
@@ -2414,7 +2605,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     setEditInstructorId(null);
                   }}
                   disabled={!editDepartment}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="">Select Sub Department</option>
                   {(departments.find(d => d.name === editDepartment)?.subdepartments || []).map((s) => (
@@ -2424,28 +2615,28 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date & Time</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Start Date & Time</label>
                   <input
                     name="start_date"
                     type="datetime-local"
                     defaultValue={toLocalDateTimeInputValue(editingCourse.start_date)}
                     min={minDateTimeInput}
-                    className="course-datetime-input w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="course-datetime-input w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date & Time</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Due Date & Time</label>
                   <input
                     name="deadline"
                     type="datetime-local"
                     defaultValue={toLocalDateTimeInputValue(editingCourse.deadline)}
                     min={minDateTimeInput}
-                    className="course-datetime-input w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="course-datetime-input w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned to</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Assigned to</label>
                 {editInstructorId !== null && (() => {
                   const sel = instructors.find(i => i.id === editInstructorId);
                   return sel ? (
@@ -2491,7 +2682,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">{sel.fullname}</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate">{sel.fullname}</p>
                         <p className="text-xs text-green-600">Assigned Instructor</p>
                         {editInstructorPhotoFile && (
                           <p className="text-xs text-blue-600 mt-0.5">📷 New photo ready to save</p>
@@ -2511,7 +2702,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     setEditInstructorPhotoPreview(newInst?.profile_picture ?? null);
                     setEditInstructorPhotoFile(null);
                   }}
-                  className="w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full border border-slate-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="">Unassigned</option>
                   {getEligibleInstructors(editDepartment, editSubdepartmentId).map(i => (
@@ -2530,7 +2721,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                 <button
                   type="button"
                   onClick={() => { setShowEditModal(false); setEditingCourse(null); setEditInstructorPhotoFile(null); setEditInstructorPhotoPreview(null); }}
-                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-md hover:bg-gray-50"
+                  className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-md hover:bg-slate-50"
                 >
                   Cancel
                 </button>
@@ -2540,23 +2731,113 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
         </div>
       )}
 
+      {courseUnlockModalOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50"
+          onClick={(e) => { if (e.target === e.currentTarget) { setCourseUnlockModalOpen(false); setCourseUnlockTarget(null); } }}
+        >
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-3 text-slate-900 dark:text-white">Unlock Employee Access</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Unlock access for one employee currently enrolled in this course.</p>
+            {unlockError && <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded px-3 py-2 mb-3">{unlockError}</div>}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Employee</label>
+                <select
+                  value={selectedUnlockEmployeeId}
+                  onChange={(e) => setSelectedUnlockEmployeeId(e.target.value ? Number(e.target.value) : '')}
+                  disabled={unlockLoadingEmployees}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                >
+                  <option value="">{unlockLoadingEmployees ? 'Loading employees...' : 'Select an employee'}</option>
+                  {unlockEmployees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.fullName} ({employee.email})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Only employees currently enrolled in this course are shown.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Unlock Until (Philippine time)</label>
+                <input
+                  type="datetime-local"
+                  value={unlockUntil}
+                  onChange={(e) => setUnlockUntil(e.target.value)}
+                  min={minDateTimeInput}
+                  disabled={unlockPermanent}
+                  className="w-full border border-slate-300 dark:border-slate-600 rounded-md py-2 px-3 text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+                <p className="text-xs text-slate-400 mt-1">Times are interpreted as Philippine Standard Time.</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input id="admin-course-perm" type="checkbox" checked={unlockPermanent} onChange={(e) => setUnlockPermanent(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500" />
+                <label htmlFor="admin-course-perm" className="text-sm text-slate-700 dark:text-slate-300">Permanent unlock (no expiration)</label>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => { setCourseUnlockModalOpen(false); setCourseUnlockTarget(null); }}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                disabled={unlocking}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUnlockCourse}
+                disabled={unlocking}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm disabled:opacity-50"
+              >
+                {unlocking ? 'Unlocking...' : 'Unlock Course'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {unlockSuccessModalOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50"
+          onClick={(e) => { if (e.target === e.currentTarget) setUnlockSuccessModalOpen(false); }}
+        >
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-3 text-slate-900 dark:text-white">Unlock Successful</h3>
+            <p className="text-sm text-slate-700 dark:text-slate-300 mb-6">{unlockSuccessMessage}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setUnlockSuccessModalOpen(false)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* ═══════════════════ PREVIEW LESSON MODAL ═══════════════════ */}
       {previewLesson && (
         <div className="fixed inset-0 z-[60]">
           <div className="flex items-center justify-center min-h-screen px-4 overflow-y-auto">
             <div className="fixed inset-0 bg-slate-500 opacity-75" onClick={() => setPreviewLesson(null)} />
             <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full z-10 max-h-[90vh] overflow-y-auto flex flex-col">
-              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center p-6 border-b border-slate-200">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{previewLesson.title}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">{previewLesson.title}</h3>
                   <div className="flex items-center gap-3 mt-1">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                       previewLesson.type === 'Video' ? 'bg-purple-100 text-purple-700' :
                       previewLesson.type === 'Document' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
+                      'bg-slate-100 text-slate-700'
                     }`}>{previewLesson.type}</span>
-                    {previewLesson.duration && <span className="text-xs text-gray-500">{previewLesson.duration}</span>}
-                    {previewLesson.file_size && <span className="text-xs text-gray-500">{previewLesson.file_size}</span>}
+                    {previewLesson.duration && <span className="text-xs text-slate-500">{previewLesson.duration}</span>}
+                    {previewLesson.file_size && <span className="text-xs text-slate-500">{previewLesson.file_size}</span>}
                     {previewLesson.status && (
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         previewLesson.status === 'Published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
@@ -2574,7 +2855,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       Delete
                     </button>
                   )}
-                  <button onClick={() => setPreviewLesson(null)} className="text-gray-400 hover:text-gray-600">
+                  <button onClick={() => setPreviewLesson(null)} className="text-slate-400 hover:text-slate-600">
                     <XMarkIcon className="h-5 w-5" />
                   </button>
                 </div>
@@ -2605,8 +2886,8 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       />
                     ) : (
                       <div className="text-center py-8">
-                        <DocumentPlusIcon className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <p className="text-sm text-gray-600 mb-4">{previewLesson.title}</p>
+                        <DocumentPlusIcon className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+                        <p className="text-sm text-slate-600 mb-4">{previewLesson.title}</p>
                         <a
                           href={previewLesson.content_url}
                           target="_blank"
@@ -2620,14 +2901,14 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   </div>
                 )}
                 {previewLesson.type === 'Text' && (
-                  <div className="prose prose-sm max-w-none bg-gray-50 rounded-lg p-6 border border-gray-200 whitespace-pre-wrap">
+                  <div className="prose prose-sm max-w-none bg-slate-50 rounded-lg p-6 border border-slate-200 whitespace-pre-wrap">
                     {previewLesson.text_content || 'No content available.'}
                   </div>
                 )}
                 {!previewLesson.content_url && previewLesson.type !== 'Text' && (
                   <div className="text-center py-12">
-                    <DocumentPlusIcon className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                    <p className="text-sm text-gray-500">No file uploaded for this lesson.</p>
+                    <DocumentPlusIcon className="mx-auto h-12 w-12 text-slate-300 mb-4" />
+                    <p className="text-sm text-slate-500">No file uploaded for this lesson.</p>
                   </div>
                 )}
               </div>
