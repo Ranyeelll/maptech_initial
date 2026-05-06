@@ -1336,7 +1336,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                   <div>Instructor: Admin</div>
                 </div>
                 <button
-                  className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors"
+                  className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors"
                 >
                   Manage Content →
                 </button>
@@ -1388,7 +1388,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
             setCreateInstructorId(null);
             setShowCreateModal(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors"
         >
           <PlusIcon className="h-5 w-5" />
           Create Course
@@ -1535,7 +1535,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               <div className="mt-auto pt-3 border-t border-slate-100 space-y-2">
                 <button
                   onClick={() => onNavigate?.('course-detail', String(course.id))}
-                  className="course-manage-button w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors font-medium"
+                  className="course-manage-button w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors font-medium"
                 >
                   Manage Content →
                 </button>
@@ -1745,7 +1745,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     <button
                       onClick={handleAddModule}
                       disabled={isSubmitting || !newModuleTitle.trim()}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 flex items-center gap-1"
                     >
                       <PlusIcon className="h-4 w-4" /> Add Module
                     </button>
@@ -2025,7 +2025,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                         (uploadType !== 'Text' && !uploadFile) ||
                         (uploadType === 'Text' && !uploadText.trim())
                       }
-                      className="w-full bg-green-600 text-white py-2.5 rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors font-medium"
+                      className="w-full bg-indigo-600 text-white py-2.5 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors font-medium"
                     >
                       {isUploading ? `Uploading... ${uploadProgress}%` : 'Upload & Save'}
                     </button>
@@ -2120,7 +2120,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     <button
                       onClick={handleSaveQuiz}
                       disabled={isSubmitting || !selectedModuleId || quizQuestions.length === 0}
-                      className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+                      className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50"
                     >
                       {isSubmitting ? 'Saving...' : 'Save Quiz'}
                     </button>
@@ -2153,7 +2153,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                       <button
                         onClick={handleSendQuiz}
                         disabled={sendingQuiz || !sendQuizModuleId}
-                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm whitespace-nowrap"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 text-sm whitespace-nowrap"
                       >
                         {sendingQuiz ? 'Sending...' : 'Send Quiz'}
                       </button>
@@ -2317,7 +2317,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                     setIsBulkAssigning(false);
                   }
                 }}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50"
                 disabled={isBulkAssigning}
               >
                 {isBulkAssigning ? 'Assigning...' : 'Assign'}
@@ -2525,7 +2525,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Creating...' : 'Publish Course'}
                 </button>
@@ -2714,7 +2714,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -2790,7 +2790,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
               <button
                 onClick={handleUnlockCourse}
                 disabled={unlocking}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm disabled:opacity-50"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
               >
                 {unlocking ? 'Unlocking...' : 'Unlock Course'}
               </button>
@@ -2811,7 +2811,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
             <div className="flex justify-end">
               <button
                 onClick={() => setUnlockSuccessModalOpen(false)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm"
               >
                 OK
               </button>
@@ -2892,7 +2892,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                           href={previewLesson.content_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
                         >
                           Download File
                         </a>

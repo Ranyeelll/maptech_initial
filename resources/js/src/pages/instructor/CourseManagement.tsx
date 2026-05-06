@@ -660,7 +660,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Courses &amp; Content</h1>
         <button
           onClick={openCreate}
-          className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
         >
           <Plus className="h-4 w-4 mr-2" />
           Create Course
@@ -800,7 +800,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                 <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
                   <button
                     onClick={() => onNavigate?.('course-detail', String(course.id))}
-                    className="course-manage-button w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition-colors font-medium"
+                    className="course-manage-button w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors font-medium"
                   >
                     Manage Content &rarr;
                   </button>
@@ -857,13 +857,13 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                 <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
                   <button
                     onClick={() => onNavigate?.('custom-module-detail', undefined, module.id)}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 rounded-md shadow-sm transition-colors"
+                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-md shadow-sm transition-colors"
                   >
                     View Content &rarr;
                   </button>
                   <button
                     onClick={() => openPushToDeptModal(module.id)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors text-sm font-medium"
                   >
                     <Users className="h-4 w-4" />
                     Push to My Employee
@@ -1065,7 +1065,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50"
                 >
                   {isSubmitting ? 'Publishing...' : 'Publish Course'}
                 </button>
@@ -1139,7 +1139,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                 <button
                   onClick={() => { void handleUnlockCourse(); }}
                   disabled={unlocking}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
                 >
                   {unlocking ? 'Unlocking...' : 'Unlock Course'}
                 </button>
@@ -1234,7 +1234,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                         onClick={handlePushToDepartment}
                         disabled={pushing || deptEmployees.length === 0 || allPushed}
                         title={allPushed ? 'All employees have already received this module' : undefined}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {pushing ? 'Pushing...' : 'Push to My Employee'}
                       </button>

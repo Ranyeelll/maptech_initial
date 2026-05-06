@@ -758,7 +758,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 href={officeViewerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md"
+                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors shadow-md"
               >
                 <Eye className="h-5 w-5 mr-2" />View / Study
               </a>
@@ -814,7 +814,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 href={officeViewerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md"
+                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors shadow-md"
               >
                 <Eye className="h-5 w-5 mr-2" />
                 View / Study
@@ -883,7 +883,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 href={content_url || undefined}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md"
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors shadow-md"
               >
                 <ExternalLink className="h-5 w-5 mr-2" />
                 Open / View File
@@ -955,7 +955,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
           <button
             onClick={submitQuiz}
             disabled={!allAnswered || quizSubmitting}
-            className="w-full py-3 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {quizSubmitting ? <><Loader className="h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Quiz'}
           </button>
@@ -1025,7 +1025,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                       {currentModuleIndex < modules.length - 1 && modules[currentModuleIndex + 1]?.is_unlocked && (
                         <button
                           onClick={() => selectModule(modules[currentModuleIndex + 1])}
-                          className="mt-3 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
+                          className="mt-3 px-6 py-2.5 bg-green-600 hover:bg-green-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
                         >
                           Proceed to Next Module <ArrowRight className="h-4 w-4" />
                         </button>
@@ -1552,7 +1552,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                   <button
                     onClick={goToNext}
                     disabled={!canGoNext}
-                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                     <ArrowRight className="h-4 w-4 ml-2" />

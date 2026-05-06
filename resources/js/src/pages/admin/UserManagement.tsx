@@ -590,7 +590,7 @@ export function UserManagement({ currentUserEmail, onLogout }: { currentUserEmai
           <div className="relative z-50" ref={addUserDropdownRef}>
             <button
               onClick={() => setShowAddUserDropdown(!showAddUserDropdown)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add User
@@ -1148,7 +1148,7 @@ export function UserManagement({ currentUserEmail, onLogout }: { currentUserEmai
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 hover:shadow-[0_10px_20px_rgba(34,197,94,0.22)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-green-400 sm:col-start-2 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 hover:shadow-[0_10px_20px_rgba(99,102,241,0.22)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 sm:col-start-2 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {submitting ? (
                         <>
@@ -1273,7 +1273,7 @@ export function UserManagement({ currentUserEmail, onLogout }: { currentUserEmai
                     setIsRegeneratedKey(false);
                     setRecoveryKeyUserId(null);
                   }}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
                 >
                   Close
                 </button>

@@ -1011,7 +1011,7 @@ export function NotificationManagement() {
             onClick={async () => {
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
           >
             <Plus className="h-4 w-4 mr-2" />
             Send Announcement
@@ -1512,7 +1512,7 @@ export function NotificationManagement() {
                     <button
                       type="submit"
                       disabled={isSending}
-                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:text-sm"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 sm:text-sm"
                     >
                       <Send className="h-4 w-4 mr-2" />
                       {isSending ? 'Sending...' : 'Send Announcement'}
@@ -1904,7 +1904,7 @@ export function NotificationManagement() {
                     <button
                       type="submit"
                       disabled={isSendingOne}
-                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:text-sm"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 sm:text-sm"
                     >
                       <Send className="h-4 w-4 mr-2" />
                       {isSendingOne ? 'Sending...' : 'Send'}

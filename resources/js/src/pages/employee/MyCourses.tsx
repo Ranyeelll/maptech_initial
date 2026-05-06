@@ -249,7 +249,7 @@ export function MyCourses({ onNavigate, globalSearch = '' }: MyCoursesProps) {
                 <button
                   onClick={() => onNavigate('course-viewer', course.id)}
                   className={`w-full flex justify-center items-center py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
-                    course.status === 'Completed' ? 'bg-slate-600 hover:bg-slate-700' : 'bg-green-600 hover:bg-green-700'
+                    course.status === 'Completed' ? 'bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-700' : 'bg-green-600 hover:bg-green-700 dark:bg-emerald-600 dark:hover:bg-emerald-700'
                   }`}
                 >
                   {course.status === 'Not Started' ? 'Start Course' :
@@ -264,7 +264,7 @@ export function MyCourses({ onNavigate, globalSearch = '' }: MyCoursesProps) {
                 onClick={() => !isLocked && onNavigate('course-enroll', course.id)}
                 disabled={isLocked}
                 className={`w-full flex justify-center items-center py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white transition-colors ${
-                  isLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700'
+                  isLocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 dark:bg-emerald-600 dark:hover:bg-emerald-700'
                 }`}
               >
                 View &amp; Enroll
