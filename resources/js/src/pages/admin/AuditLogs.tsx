@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import useConfirm from '../../hooks/useConfirm';
 import usePrompt from '../../hooks/usePrompt';
 import { LogIn, LogOut, Search, ChevronLeft, ChevronRight, Filter, Users, GraduationCap, Shield, Clock, RefreshCw, X, Download, FileText, FileSpreadsheet, ChevronDown } from "lucide-react";
 import { LoadingState } from '../../components/ui/LoadingState';
@@ -113,8 +112,6 @@ export function AuditLogs() {
     }
   }, [API]);
 
-  const confirm = useConfirm();
-  const { showConfirm } = confirm;
   const { showPrompt, PromptModalRenderer } = usePrompt();
 
   const fetchLogs = (pageNum: number) => doFetch(pageNum, false);
@@ -324,8 +321,6 @@ export function AuditLogs() {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalRefreshing, setModalRefreshing] = useState(false);
   const [modalLastRefreshed, setModalLastRefreshed] = useState<Date | null>(null);
-  const [selectedLogIds, setSelectedLogIds] = useState<number[]>([]);
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
 
   const getCookieValue = (name: string) => {
     const value = `; ${document.cookie}`;
@@ -391,51 +386,6 @@ export function AuditLogs() {
     });
     if (!res.ok) throw new Error('Archive failed');
     await fetchLogs(1);
-  };
-
-  const deleteTimeLog = async (id: number) => {
-    await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
-    const res = await fetch(`/api/time-logs/admin/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: { 'X-XSRF-TOKEN': getXsrf() },
-    });
-    if (!res.ok) throw new Error('Delete failed');
-    await fetchLogs(1);
-  };
-
-  const deleteAllTimeLogs = async () => {
-    if (!modalUser || modalTimeLogs.length === 0) return;
-
-    let deletedCount = 0;
-    let failedCount = 0;
-
-    for (const tl of modalTimeLogs) {
-      try {
-        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
-        const res = await fetch(`/api/time-logs/admin/${tl.id}`, {
-          method: 'DELETE',
-          credentials: 'include',
-          headers: { 'X-XSRF-TOKEN': getXsrf() },
-        });
-        if (res.ok) {
-          deletedCount++;
-        } else {
-          failedCount++;
-        }
-      } catch {
-        failedCount++;
-      }
-    }
-
-    await fetchLogs(1);
-    await fetchUserTimeLogs(modalUser.id);
-
-    if (failedCount > 0) {
-      alert(`Deleted ${deletedCount} time logs. ${failedCount} failed.`);
-    } else {
-      alert(`Deleted all ${deletedCount} time logs successfully.`);
-    }
   };
 
   const openManageModal = (user: AuditUser | null) => {
@@ -570,19 +520,6 @@ export function AuditLogs() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {/* Delete All button disabled - audit logs cannot be deleted */}
-                {/* {modalTimeLogs.length > 0 && (
-                  <button
-                    onClick={() => {
-                      showConfirm(`Delete all ${modalTimeLogs.length} time logs for ${modalUser?.fullname}?`, async () => {
-                        await deleteAllTimeLogs();
-                      });
-                    }}
-                    className="px-2 py-1 text-xs border rounded border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200 dark:border-rose-700 dark:bg-rose-900/35 dark:text-rose-300 dark:hover:bg-rose-900/55"
-                  >
-                    Delete All
-                  </button>
-                )} */}
                 <button
                   onClick={refreshModal}
                   disabled={modalRefreshing}
@@ -638,16 +575,9 @@ export function AuditLogs() {
                         >
                           {tl.archived ? 'Unarchive' : 'Archive'}
                         </button>
-                        <button
-                          onClick={() => {
-                            showConfirm('Delete this time log?', async () => {
-                              try { await deleteTimeLog(tl.id); alert('Deleted'); } catch (e) { alert('Delete failed'); }
-                            });
-                          }}
-                          className="px-2 py-1 text-xs border rounded border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200 dark:border-rose-700 dark:bg-rose-900/35 dark:text-rose-300 dark:hover:bg-rose-900/55"
-                        >
-                          Delete
-                        </button>
+                        <span className="px-2 py-1 text-xs border rounded border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                          Delete disabled
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -936,30 +866,9 @@ export function AuditLogs() {
                             >
                               Manage
                             </button>
-                            <button
-                              onClick={async () => {
-                                const id = sessionPrimaryId(latest);
-                                if (!id) return;
-                                    showConfirm('Delete this audit log?', async () => {
-                                      try {
-                                        setLoading(true);
-                                        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
-                                        const res = await fetch('/api/admin/audit-logs/bulk-delete', {
-                                          method: 'POST',
-                                          credentials: 'include',
-                                          headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getXsrf() },
-                                          body: JSON.stringify({ ids: [id] }),
-                                        });
-                                        if (!res.ok) throw new Error('Delete failed');
-                                        await fetchLogs(1);
-                                        setSelectedLogIds((s) => s.filter((i) => i !== id));
-                                      } catch (e) { alert('Delete failed'); } finally { setLoading(false); }
-                                    });
-                              }}
-                              className="px-2 py-1 text-xs border rounded border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200 dark:border-rose-700 dark:bg-rose-900/35 dark:text-rose-300 dark:hover:bg-rose-900/55"
-                            >
-                              Delete
-                            </button>
+                            <span className="px-2 py-1 text-xs border rounded border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                              Delete disabled
+                            </span>
                           </div>
                         </td>
                       </tr>
@@ -1030,30 +939,9 @@ export function AuditLogs() {
                           </td>
                           <td style={{width: '170px'}} className="px-6 py-2 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={async () => {
-                                  const id = sessionPrimaryId(older);
-                                  if (!id) return;
-                                  showConfirm('Delete this audit log?', async () => {
-                                    try {
-                                      setLoading(true);
-                                      await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
-                                      const res = await fetch('/api/admin/audit-logs/bulk-delete', {
-                                        method: 'POST',
-                                        credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getXsrf() },
-                                        body: JSON.stringify({ ids: [id] }),
-                                      });
-                                      if (!res.ok) throw new Error('Delete failed');
-                                      await fetchLogs(1);
-                                      setSelectedLogIds((s) => s.filter((i) => i !== id));
-                                    } catch (e) { alert('Delete failed'); } finally { setLoading(false); }
-                                  });
-                                }}
-                                className="px-2 py-1 text-xs border rounded border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200 dark:border-rose-700 dark:bg-rose-900/35 dark:text-rose-300 dark:hover:bg-rose-900/55"
-                              >
-                                Delete
-                              </button>
+                              <span className="px-2 py-1 text-xs border rounded border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                                Delete disabled
+                              </span>
                             </div>
                           </td>
                         </tr>
