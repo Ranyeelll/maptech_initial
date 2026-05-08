@@ -213,18 +213,45 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
             </div>
           </div>
           {/* Course Enrollment vs Completion */}
-          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Course Enrollment vs Completion</h3>
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Course Enrollment vs Completion</h3>
             <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={courseStats}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="enrolled" fill="#22c55e" name="Enrolled" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="completed" fill="#3b82f6" name="Completed" radius={[4, 4, 0, 0]} />
+                <BarChart data={courseStats} margin={{ top: 10, right: 30, left: 40, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.25} />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#cbd5e1', fontSize: 13 }}
+                    height={40}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#cbd5e1', fontSize: 13 }}
+                    allowDecimals={false}
+                    width={50}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(59, 130, 246, 0.2)' }}
+                    contentStyle={{
+                      background: '#1a2332',
+                      border: '2px solid #64748b',
+                      borderRadius: '12px',
+                      boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
+                      padding: '16px 20px',
+                    }}
+                    labelStyle={{ color: '#fef08a', fontWeight: 800, marginBottom: 10, fontSize: 14 }}
+                    itemStyle={{ color: '#84cc16', fontSize: 14, padding: '5px 0', fontWeight: 600 }}
+                    separator=" : "
+                    wrapperStyle={{ outline: 'none', backgroundColor: '#0f172a' }}
+                  />
+                  <Legend
+                    wrapperStyle={{ paddingTop: 16, fontSize: 14, color: '#cbd5e1' }}
+                  />
+                  <Bar dataKey="enrolled" fill="#10b981" name="Enrolled" radius={[6, 6, 0, 0]} maxBarSize={80} />
+                  <Bar dataKey="completed" fill="#0084ff" name="Completed" radius={[6, 6, 0, 0]} maxBarSize={80} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
