@@ -26,6 +26,8 @@ type NotificationItem = {
   message: string;
   type: string;
   created_at: string;
+  is_read?: boolean;
+  read?: boolean;
   data?: {
     from_user_name?: string;
     from_role?: string;
@@ -35,8 +37,16 @@ type NotificationItem = {
   read_at: string | null;
 };
 
+function isNotificationRead(item: NotificationItem): boolean {
+  if (item.read_at !== null && item.read_at !== undefined) return true;
+  if (item.is_read === true) return true;
+  if (item.read === true) return true;
+  return false;
+}
+
 const PENDING_NOTIFICATION_ID_KEY = 'maptech_pending_notification_id';
 const PENDING_NOTIFICATION_ROLE_KEY = 'maptech_pending_notification_role';
+const PENDING_NOTIFICATION_ITEM_KEY = 'maptech_pending_notification_item';
 const OPEN_NOTIFICATION_EVENT = 'maptech-open-notification';
 const NOTIFICATION_READ_EVENT = 'maptech-notification-read';
 
@@ -268,13 +278,15 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
     return () => {
       isMounted = false;
       isCancelledRef.current = true;
-      if (channel) {
-        try {
-          channel.stopListening('NotificationCountUpdated');
-          channel.stopListening('NotificationCreated');
-        } catch {
-          // ignore
-        }
+      try {
+        channel?.stopListening('NotificationCountUpdated');
+        channel?.stopListening('NotificationCreated');
+      } catch {
+        // ignore
+      }
+      if (bannerTimeoutRef.current !== null) {
+        window.clearTimeout(bannerTimeoutRef.current);
+        bannerTimeoutRef.current = null;
       }
     };
   }, [role, fetchUnread, fetchRecent, showIncomingBanner]);
@@ -296,27 +308,6 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
       document.removeEventListener('visibilitychange', handleFocus);
     };
   }, [open, fetchUnread, fetchRecent]);
-
-  useEffect(() => {
-    // Poll as a fallback when websocket events are delayed or unavailable.
-    // fetchUnread already triggers fetchRecent when count increases (via fetchRecentForBannerRef)
-    const timer = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return;
-      fetchUnread();
-    }, 2000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [fetchUnread]);
-
-  useEffect(() => {
-    return () => {
-      if (bannerTimeoutRef.current !== null) {
-        window.clearTimeout(bannerTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const hasUnread = unreadCount > 0;
   const displayCount = unreadCount > 9 ? '9+' : unreadCount.toString();
@@ -366,10 +357,41 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
   };
 
   const handleItemClick = async (n: NotificationItem) => {
+    const wasUnread = !!n && !isNotificationRead(n);
+    const pendingNotification: NotificationItem = {
+      ...n,
+      read_at: n.read_at || new Date().toISOString(),
+    };
+
+    // Optimistically mark read before potential navigation/unmount.
+    if (wasUnread) {
+      setItems((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item))
+      );
+      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+    }
+
+    // Trigger route switch first to reduce perceived click delay.
+    if (onOpenAll) {
+      onOpenAll();
+      setOpen(false);
+    }
+
     try {
       localStorage.setItem(PENDING_NOTIFICATION_ID_KEY, String(n.id));
       localStorage.setItem(PENDING_NOTIFICATION_ROLE_KEY, role);
-      window.dispatchEvent(new CustomEvent(OPEN_NOTIFICATION_EVENT));
+      localStorage.setItem(
+        PENDING_NOTIFICATION_ITEM_KEY,
+        JSON.stringify(pendingNotification),
+      );
+      window.dispatchEvent(
+        new CustomEvent(OPEN_NOTIFICATION_EVENT, {
+          detail: {
+            role,
+            notification: pendingNotification,
+          },
+        })
+      );
     } catch {
       // ignore storage errors
     }
@@ -382,21 +404,17 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
     // Only mark as read if currently unread
     if (!n || n.read_at !== null) return;
 
-    // Optimistically update UI — also sync prevUnreadCountRef so the background
-    // poll does not treat the server's (not-yet-updated) count as a new notification.
-    const optimisticCount = Math.max(0, unreadCount - 1);
-    prevUnreadCountRef.current = optimisticCount;
-    setUnreadCount(optimisticCount);
+    // Optimistically update UI
     setItems((prev) =>
       prev.map((item) => (item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item))
     );
+    setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
 
     try {
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
       const xsrfToken = getCookie('XSRF-TOKEN');
       await fetch(`/api/${prefix}/notifications/${n.id}/read`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           'X-XSRF-TOKEN': decodeURIComponent(xsrfToken || ''),
@@ -502,10 +520,13 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
             {!loading && items.length > 0 && (
               <ul className="divide-y divide-slate-100 dark:divide-slate-700">
                 {items.map((n) => (
+                  (() => {
+                    const isRead = isNotificationRead(n);
+                    return (
                   <li
                     key={n.id}
                     className={`px-4 py-3 cursor-pointer transition-all duration-150 hover:translate-x-[1px] ${
-                      n.read_at
+                      isRead
                         ? 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
                         : 'bg-emerald-100/75 dark:bg-emerald-900/35 border-l-2 border-emerald-500 dark:border-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/45'
                     }`}
@@ -528,7 +549,7 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
                       <div className="flex-1 min-w-0">
                         <p
                           className={`text-sm font-semibold line-clamp-1 ${
-                            n.read_at ? 'text-slate-800 dark:text-slate-100' : 'text-slate-900 dark:text-white'
+                            isRead ? 'text-slate-800 dark:text-slate-100' : 'text-slate-900 dark:text-white'
                           }`}
                         >
                           {n.title}
@@ -546,6 +567,8 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
                       </div>
                     </div>
                   </li>
+                    );
+                  })()
                 ))}
               </ul>
             )}
