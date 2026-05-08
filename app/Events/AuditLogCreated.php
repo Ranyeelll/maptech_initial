@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\AuditLog;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -14,9 +15,9 @@ class AuditLogCreated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $auditLog;
+    public AuditLog $auditLog;
 
-    public function __construct($auditLog)
+    public function __construct(AuditLog $auditLog)
     {
         $this->auditLog = $auditLog;
     }

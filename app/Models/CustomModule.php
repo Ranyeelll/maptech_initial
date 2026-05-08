@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\CustomModuleUpdated;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -129,7 +130,7 @@ class CustomModule extends Model
     /**
      * Scope for published modules.
      */
-    public function scopePublished($query)
+    public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', 'published');
     }
@@ -137,7 +138,7 @@ class CustomModule extends Model
     /**
      * Scope for filtering by category.
      */
-    public function scopeInCategory($query, string $category)
+    public function scopeInCategory(Builder $query, string $category): Builder
     {
         return $query->where('category', $category);
     }
@@ -145,7 +146,7 @@ class CustomModule extends Model
     /**
      * Scope for filtering by tag.
      */
-    public function scopeWithTag($query, string $tag)
+    public function scopeWithTag(Builder $query, string $tag): Builder
     {
         return $query->whereJsonContains('tags', $tag);
     }
@@ -224,7 +225,7 @@ class CustomModule extends Model
         }
 
         // Remove lessons that no longer exist in custom module
-        $customLessonIds = $this->lessons->pluck('id')->toArray();
+        $customLessonIds = $this->lessons->modelKeys();
         $module->lessons()
             ->whereNotNull('custom_lesson_id')
             ->whereNotIn('custom_lesson_id', $customLessonIds)

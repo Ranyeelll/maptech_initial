@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use App\Events\NotificationCreated;
 use App\Events\NotificationCountUpdated;
 
@@ -62,6 +63,14 @@ class Notification extends Model
         return $query->whereNull('read_at');
     }
 
+    protected static function unreadCountForUser(int $userId): int
+    {
+        return DB::table('notifications')
+            ->where('user_id', $userId)
+            ->whereNull('read_at')
+            ->count();
+    }
+
     protected static function booted()
     {
         static::created(function (Notification $notification) {
@@ -70,7 +79,7 @@ class Notification extends Model
             event(new NotificationCreated($notification));
 
             // broadcast updated count
-            $count = Notification::where('user_id', $notification->user_id)->whereNull('read_at')->count();
+            $count = static::unreadCountForUser($notification->user_id);
             event(new NotificationCountUpdated($notification->user_id, $count));
         });
 
@@ -78,7 +87,7 @@ class Notification extends Model
             // If read_at changed, clear cache and broadcast new count
             if ($notification->wasChanged('read_at')) {
                 Cache::forget("user:{$notification->user_id}:notifications:unread_count");
-                $count = Notification::where('user_id', $notification->user_id)->whereNull('read_at')->count();
+                $count = static::unreadCountForUser($notification->user_id);
                 event(new NotificationCountUpdated($notification->user_id, $count));
             }
         });

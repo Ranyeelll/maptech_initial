@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class TimeLog extends Model
 {
@@ -46,18 +47,22 @@ class TimeLog extends Model
      */
     public static function enforceTimeLogLimit(int $userId): int
     {
-        $count = static::where('user_id', $userId)->count();
+        $count = DB::table('time_logs')->where('user_id', $userId)->count();
 
         if ($count >= 50) {
             $halfCount = (int) floor($count / 2);
 
-            $oldestIds = static::where('user_id', $userId)
+            $oldestIds = DB::table('time_logs')->where('user_id', $userId)
                 ->orderBy('time_in', 'asc')
                 ->limit($halfCount)
-                ->pluck('id');
+                ->pluck('id')
+                ->all();
 
+            if ($oldestIds === []) {
+                return 0;
+            }
 
-            return static::whereIn('id', $oldestIds)->delete();
+            return static::destroy($oldestIds);
         }
 
         return 0;
