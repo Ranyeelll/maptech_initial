@@ -5,6 +5,7 @@ import { safeArray, resolveImageUrl } from '../../utils/safe';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { useToast } from '../../components/ToastProvider';
 import { sanitizeHtml, RICH_CONTENT_STYLES } from '../../components/RichTextEditor';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 // Helper to get cookie value
 const getCookie = (name: string) => {
@@ -667,14 +668,14 @@ export function InstructorNotifications() {
           )}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+            className={`inline-flex items-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-semibold ${actionButtonClasses.primary}`}
           >
             <Users className="h-4 w-4 mr-2" />
             Notify Employees
           </button>
           <button
             onClick={() => setIsAdminModalOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+            className={`inline-flex items-center px-5 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-semibold ${actionButtonClasses.primary}`}
           >
             <Shield className="h-4 w-4 mr-2" />
             Notify Admin
@@ -1089,7 +1090,7 @@ export function InstructorNotifications() {
                     <button
                       type="submit"
                       disabled={isSending}
-                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:text-sm"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-base font-semibold text-white disabled:opacity-50 sm:text-sm"
                     >
                       <Send className="h-4 w-4 mr-2" />
                       {isSending ? 'Sending...' : 'Send'}
@@ -1152,7 +1153,7 @@ export function InstructorNotifications() {
               <button
                 type="submit"
                 disabled={isSending || !adminFormData.message.trim()}
-                className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
                 <Send className="h-4 w-4" />
                 {isSending ? 'Sending...' : 'Send to Admin'}

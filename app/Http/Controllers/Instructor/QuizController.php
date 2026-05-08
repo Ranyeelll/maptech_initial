@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
@@ -78,6 +79,16 @@ class QuizController extends Controller
         return $module;
     }
 
+    private function ensureLessonInModule(int $lessonId, int $moduleId): Lesson
+    {
+        $lesson = Lesson::findOrFail($lessonId);
+        if ((int) $lesson->module_id !== (int) $moduleId) {
+            abort(422, 'Selected lesson does not belong to this module.');
+        }
+
+        return $lesson;
+    }
+
     // ─── Quiz CRUD ────────────────────────────────────────────────────────────
 
     /** GET /instructor/quizzes — all quizzes for all of the instructor's courses */
@@ -85,7 +96,7 @@ class QuizController extends Controller
     {
         $user = $request->user();
 
-        $quizzes = Quiz::with(['course.subdepartment', 'module', 'questions'])
+        $quizzes = Quiz::with(['course.subdepartment', 'module', 'lesson', 'questions'])
             ->whereHas('course', fn($q) => $q->where('instructor_id', $user->id))
             ->latest()
             ->get()
@@ -94,6 +105,7 @@ class QuizController extends Controller
                     'id'                 => $quiz->id,
                     'title'              => $quiz->title,
                     'description'        => $quiz->description,
+                    'quiz_type'          => $quiz->quiz_type ?? 'regular',
                     'pass_percentage'    => $quiz->pass_percentage,
                     'course_id'          => $quiz->course_id,
                     'course_title'       => $quiz->course->title,
@@ -102,6 +114,8 @@ class QuizController extends Controller
                     'subdepartment_name' => $quiz->course->subdepartment?->name,
                     'module_id'          => $quiz->module_id,
                     'module_title'       => $quiz->module?->title,
+                    'lesson_id'          => $quiz->lesson_id,
+                    'lesson_title'       => $quiz->lesson?->title,
                     'question_count'     => $quiz->questions->count(),
                     'created_at'         => $quiz->created_at,
                 ];
@@ -127,6 +141,7 @@ class QuizController extends Controller
             'quiz:id,title,course_id,module_id,pass_percentage',
             'quiz.course:id,title,department,subdepartment_id,instructor_id',
             'quiz.module:id,title',
+            'quiz.lesson:id,title,module_id',
         ])->whereHas('quiz.course', function ($q) use ($user, $assignedSubIds, $assignedDept) {
             $q->where(function ($inner) use ($user, $assignedSubIds, $assignedDept) {
                 $inner->where('instructor_id', $user->id);
@@ -157,8 +172,11 @@ class QuizController extends Controller
                     'employee_department' => $attempt->user?->department,
                     'quiz_id' => $attempt->quiz_id,
                     'quiz_title' => $attempt->quiz?->title,
+                    'quiz_type' => $attempt->quiz?->quiz_type ?? 'regular',
                     'module_id' => $attempt->quiz?->module_id,
                     'module_title' => $attempt->quiz?->module?->title,
+                    'lesson_id' => $attempt->quiz?->lesson_id,
+                    'lesson_title' => $attempt->quiz?->lesson?->title,
                     'course_id' => $attempt->quiz?->course_id,
                     'course_title' => $attempt->quiz?->course?->title,
                     'pass_percentage' => $attempt->quiz?->pass_percentage,
@@ -179,7 +197,7 @@ class QuizController extends Controller
     {
         $course = $this->ownedCourse($courseId, $request);
 
-        $quizzes = Quiz::with(['questions', 'module'])
+        $quizzes = Quiz::with(['questions', 'module', 'lesson'])
             ->where('course_id', $courseId)
             ->latest()
             ->get()
@@ -187,9 +205,12 @@ class QuizController extends Controller
                 'id'              => $quiz->id,
                 'title'           => $quiz->title,
                 'description'     => $quiz->description,
+                'quiz_type'       => $quiz->quiz_type ?? 'regular',
                 'pass_percentage' => $quiz->pass_percentage,
                 'module_id'       => $quiz->module_id,
                 'module_title'    => $quiz->module?->title,
+                'lesson_id'       => $quiz->lesson_id,
+                'lesson_title'    => $quiz->lesson?->title,
                 'question_count'  => $quiz->questions->count(),
                 'created_at'      => $quiz->created_at,
             ]);
@@ -202,7 +223,7 @@ class QuizController extends Controller
     {
         $module = $this->ownedModule($moduleId, $request);
 
-        $quizzes = Quiz::with('questions')
+        $quizzes = Quiz::with(['questions', 'lesson'])
             ->where('module_id', $moduleId)
             ->latest()
             ->get()
@@ -210,8 +231,11 @@ class QuizController extends Controller
                 'id'              => $quiz->id,
                 'title'           => $quiz->title,
                 'description'     => $quiz->description,
+                'quiz_type'       => $quiz->quiz_type ?? 'regular',
                 'pass_percentage' => $quiz->pass_percentage,
                 'module_id'       => $quiz->module_id,
+                'lesson_id'       => $quiz->lesson_id,
+                'lesson_title'    => $quiz->lesson?->title,
                 'question_count'  => $quiz->questions->count(),
                 'created_at'      => $quiz->created_at,
             ]);
@@ -228,12 +252,29 @@ class QuizController extends Controller
             'title'           => 'required|string|max:255',
             'description'     => 'nullable|string',
             'module_id'       => 'nullable|integer|exists:modules,id',
+            'lesson_id'       => 'nullable|integer|exists:lessons,id',
+            'quiz_type'       => 'nullable|in:pre-test,post-test,regular',
             'pass_percentage' => 'nullable|integer|min:1|max:100',
         ]);
+
+        if (!empty($validated['module_id'])) {
+            $module = Module::findOrFail((int) $validated['module_id']);
+            if ((string) $module->course_id !== (string) $course->id) {
+                return response()->json(['message' => 'Selected module does not belong to this course.'], 422);
+            }
+
+            if (!empty($validated['lesson_id'])) {
+                $this->ensureLessonInModule((int) $validated['lesson_id'], (int) $validated['module_id']);
+            }
+        } elseif (!empty($validated['lesson_id'])) {
+            return response()->json(['message' => 'lesson_id requires module_id.'], 422);
+        }
 
         $quiz = Quiz::create([
             'course_id'       => $courseId,
             'module_id'       => $validated['module_id'] ?? null,
+            'lesson_id'       => $validated['lesson_id'] ?? null,
+            'quiz_type'       => $validated['quiz_type'] ?? 'regular',
             'title'           => $validated['title'],
             'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
@@ -243,9 +284,11 @@ class QuizController extends Controller
             'id'              => $quiz->id,
             'title'           => $quiz->title,
             'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
             'course_id'       => $quiz->course_id,
             'module_id'       => $quiz->module_id,
+            'lesson_id'       => $quiz->lesson_id,
             'question_count'  => 0,
             'created_at'      => $quiz->created_at,
         ], 201);
@@ -256,19 +299,23 @@ class QuizController extends Controller
     {
         $module = $this->ownedModule($moduleId, $request);
 
-        if (Quiz::where('module_id', $moduleId)->exists()) {
-            return response()->json(['message' => 'This module already has a quiz. Delete it first to create a new one.'], 422);
-        }
-
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
             'description'     => 'nullable|string',
+            'lesson_id'       => 'nullable|integer|exists:lessons,id',
+            'quiz_type'       => 'nullable|in:pre-test,post-test,regular',
             'pass_percentage' => 'nullable|integer|min:1|max:100',
         ]);
+
+        if (!empty($validated['lesson_id'])) {
+            $this->ensureLessonInModule((int) $validated['lesson_id'], $moduleId);
+        }
 
         $quiz = Quiz::create([
             'course_id'       => $module->course_id,
             'module_id'       => $moduleId,
+            'lesson_id'       => $validated['lesson_id'] ?? null,
+            'quiz_type'       => $validated['quiz_type'] ?? 'regular',
             'title'           => $validated['title'],
             'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
@@ -278,9 +325,11 @@ class QuizController extends Controller
             'id'              => $quiz->id,
             'title'           => $quiz->title,
             'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
             'course_id'       => $quiz->course_id,
             'module_id'       => $quiz->module_id,
+            'lesson_id'       => $quiz->lesson_id,
             'question_count'  => 0,
             'created_at'      => $quiz->created_at,
         ], 201);
@@ -291,17 +340,20 @@ class QuizController extends Controller
     {
         $quiz = $this->ownedQuiz($id, $request);
 
-        $quiz->load(['course', 'module', 'questions.options']);
+        $quiz->load(['course', 'module', 'lesson', 'questions.options']);
 
         return response()->json([
             'id'              => $quiz->id,
             'title'           => $quiz->title,
             'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
             'course_id'       => $quiz->course_id,
             'course_title'    => $quiz->course->title,
             'module_id'       => $quiz->module_id,
             'module_title'    => $quiz->module?->title,
+            'lesson_id'       => $quiz->lesson_id,
+            'lesson_title'    => $quiz->lesson?->title,
             'questions'       => $quiz->questions->map(fn($q) => $this->formatQuestion($q))->values(),
             'created_at'      => $quiz->created_at,
         ]);

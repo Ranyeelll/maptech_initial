@@ -542,7 +542,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor' 
                                     {onOpenQuiz && (
                                       <button
                                         onClick={() => onOpenQuiz(quiz.id)}
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-emerald-300 border border-green-200 dark:border-emerald-700 rounded-md hover:bg-green-50 dark:hover:bg-emerald-900/25 transition-colors"
+                                        className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-md shadow-sm transition-colors"
                                       >
                                         <Edit2 className="h-3.5 w-3.5" />
                                         Manage
@@ -661,7 +661,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor' 
                     <button
                       onClick={handleAddQuestion}
                       disabled={addingQuestion}
-                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 disabled:opacity-50"
+                      className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md shadow-sm disabled:opacity-50"
                     >
                       {addingQuestion ? 'Adding...' : 'Add Question'}
                     </button>
@@ -746,7 +746,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor' 
                               <button
                                 onClick={handleSaveQuestionEdit}
                                 disabled={savingQuestionEdit}
-                                className="px-2.5 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                                className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded disabled:opacity-50"
                               >
                                 {savingQuestionEdit ? 'Saving...' : 'Save Question'}
                               </button>
@@ -777,7 +777,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor' 
               <button
                 onClick={handleSaveEdit}
                 disabled={savingEdit}
-                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md shadow-sm disabled:opacity-50"
               >
                 {savingEdit ? 'Saving...' : 'Save Changes'}
               </button>

@@ -17,6 +17,7 @@ import {
 } from
 'recharts';
 import { Download, Calendar } from 'lucide-react';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 const COLORS = ['#34b46c', '#c8a73a', '#7f90ab'];
 const POPULAR_COURSE_COLORS = ['#2ea85f', '#3abf6f', '#60ca88'];
@@ -327,7 +328,7 @@ export function ReportsAnalytics() {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-60">
+            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium disabled:opacity-60 ${actionButtonClasses.success}`}>
             <Download className="h-4 w-4 mr-2" />
             {exporting ? 'Exporting...' : 'Export Report'}
           </button>

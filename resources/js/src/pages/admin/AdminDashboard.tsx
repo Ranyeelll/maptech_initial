@@ -28,6 +28,7 @@ import {
   Legend,
 } from 'recharts';
 import { LoadingState } from '../../components/ui/LoadingState';
+import { statIconContainerClasses, statIconGlyphClasses } from '../../utils/uiPalette';
 
 const ANALYTICS_COLORS = ['#34b46c', '#c8a73a', '#7f90ab'];
 const POPULAR_COURSE_COLORS = ['#2ea85f', '#3abf6f', '#60ca88'];
@@ -572,8 +573,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : stats?.total_employees ?? 0}
               </p>
             </div>
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-full">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className={statIconContainerClasses.blue}>
+              <Users className={statIconGlyphClasses.blue} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -597,8 +598,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : stats?.active_courses ?? 0}
               </p>
             </div>
-            <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-full">
-              <BookOpen className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className={statIconContainerClasses.green}>
+              <BookOpen className={statIconGlyphClasses.green} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -620,8 +621,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : `${stats?.completion_rate ?? 0}%`}
               </p>
             </div>
-            <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-full">
-              <Award className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <div className={statIconContainerClasses.purple}>
+              <Award className={statIconGlyphClasses.purple} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -643,8 +644,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : `${stats?.avg_quiz_score ?? 0}%`}
               </p>
             </div>
-            <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-full">
-              <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            <div className={statIconContainerClasses.orange}>
+              <TrendingUp className={statIconGlyphClasses.orange} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">

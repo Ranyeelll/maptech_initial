@@ -3,6 +3,7 @@ import useConfirm from '../../hooks/useConfirm';
 import { useToast } from '../../components/ToastProvider';
 import { createPortal } from 'react-dom';
 import { safeArray } from '../../utils/safe';
+import { actionButtonClasses } from '../../utils/uiPalette';
 import {
   Search,
   Plus,
@@ -660,7 +661,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Courses &amp; Content</h1>
         <button
           onClick={openCreate}
-          className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
+          className={`inline-flex items-center px-5 py-2.5 ${actionButtonClasses.primary} text-sm font-semibold rounded-md shadow-sm transition-colors`}
         >
           <Plus className="h-4 w-4 mr-2" />
           Create Course
@@ -800,14 +801,14 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                 <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
                   <button
                     onClick={() => onNavigate?.('course-detail', String(course.id))}
-                    className="course-manage-button w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors font-medium"
+                    className="course-manage-button w-full bg-indigo-600 text-white py-2.5 rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors font-semibold shadow-sm"
                   >
                     Manage Content &rarr;
                   </button>
                   {ended && (
                     <button
                       onClick={() => openCourseUnlockModal(course)}
-                      className="w-full text-sm px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      className="w-full text-sm px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-600 rounded text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                     >
                       Unlock
                     </button>
@@ -857,13 +858,13 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                 <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
                   <button
                     onClick={() => onNavigate?.('custom-module-detail', undefined, module.id)}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-md shadow-sm transition-colors"
+                    className="w-full inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-md shadow-sm transition-colors"
                   >
                     View Content &rarr;
                   </button>
                   <button
                     onClick={() => openPushToDeptModal(module.id)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors text-sm font-medium"
+                    className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors text-sm font-semibold shadow-sm"
                   >
                     <Users className="h-4 w-4" />
                     Push to My Employee
@@ -1009,7 +1010,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                     <button
                       type="button"
                       onClick={addModule}
-                      className="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                      className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-md shadow-sm"
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Add Module
@@ -1058,14 +1059,14 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isSubmitting}
-                  className="flex-1 py-2 px-4 border border-slate-300 rounded-md text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
+                  className="flex-1 py-2 px-4 border border-slate-200 dark:border-slate-600 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50"
+                  className="flex-1 py-2.5 px-5 border border-transparent rounded-md text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 shadow-sm disabled:opacity-50"
                 >
                   {isSubmitting ? 'Publishing...' : 'Publish Course'}
                 </button>
@@ -1132,14 +1133,14 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
               <div className="flex gap-3 justify-end mt-6">
                 <button
                   onClick={() => { setCourseUnlockModalOpen(false); setCourseUnlockTarget(null); }}
-                  className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-md text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => { void handleUnlockCourse(); }}
                   disabled={unlocking}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm disabled:opacity-50"
                 >
                   {unlocking ? 'Unlocking...' : 'Unlock Course'}
                 </button>
@@ -1226,7 +1227,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                     <div className="flex gap-3 justify-end">
                       <button
                         onClick={() => { setPushDeptModalOpen(false); setPushModuleId(null); setDeptEmployees([]); setLoadingEmployees(false); }}
-                        className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
                       >
                         Cancel
                       </button>
@@ -1234,7 +1235,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                         onClick={handlePushToDepartment}
                         disabled={pushing || deptEmployees.length === 0 || allPushed}
                         title={allPushed ? 'All employees have already received this module' : undefined}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-semibold shadow-sm hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {pushing ? 'Pushing...' : 'Push to My Employee'}
                       </button>

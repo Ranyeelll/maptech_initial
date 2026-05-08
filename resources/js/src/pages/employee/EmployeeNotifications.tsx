@@ -5,6 +5,7 @@ import { safeArray, resolveImageUrl } from '../../utils/safe';
 import { LoadingState } from '../../components/ui/LoadingState';
 import InfoModal from '../../components/InfoModal';
 import { sanitizeHtml, RICH_CONTENT_STYLES } from '../../components/RichTextEditor';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 interface Notification {
   id: number;
@@ -657,7 +658,7 @@ export function EmployeeNotifications() {
           )}
           <button
             onClick={() => openModal('instructor')}
-            className="inline-flex items-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            className={`inline-flex items-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium ${actionButtonClasses.info}`}
           >
             <MessageCircle className="h-4 w-4 mr-2" />
             Message Instructor

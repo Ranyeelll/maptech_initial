@@ -6,6 +6,7 @@ import { LoadingState } from '../../components/ui/LoadingState';
 import InfoModal from '../../components/InfoModal';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { sanitizeHtml, RICH_CONTENT_STYLES } from '../../components/RichTextEditor';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 interface Notification {
   id: number;
@@ -1011,7 +1012,7 @@ export function NotificationManagement() {
             onClick={async () => {
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium ${actionButtonClasses.primary}`}
           >
             <Plus className="h-4 w-4 mr-2" />
             Send Announcement

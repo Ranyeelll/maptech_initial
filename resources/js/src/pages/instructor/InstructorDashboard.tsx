@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../../components/ToastProvider';
 import { LoadingState } from '../../components/ui/LoadingState';
-// icons removed — not used in this component
+import { Users, BookOpen, Award, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import { UserTimeLog } from '../../components/UserTimeLog';
+import { actionButtonClasses, statIconContainerClasses, statIconGlyphClasses } from '../../utils/uiPalette';
 
 interface CourseStat { name: string; enrolled: number; completed: number }
 interface PerformancePoint { name: string; avgScore: number; submissions: number }
@@ -22,22 +23,46 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
   const [newStudentsMonth, setNewStudentsMonth] = useState<number>(0);
   const [passRateDelta, setPassRateDelta] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState('');
+
+  const loadDashboard = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
+
+    try {
+      const response = await fetch('/api/instructor/dashboard', { credentials: 'include' });
+      const data = response.ok ? await response.json() : null;
+      if (!data) return;
+
+      setCourseStats(data.course_stats || []);
+      setPerformanceData(data.performance_trend || []);
+      setRecentQuestions(data.recent_questions || []);
+      setStudentCount(data.stats?.total_students || 0);
+      setAvgPassRate(data.stats?.avg_pass_rate || 0);
+      setNewStudentsMonth(data.stats?.new_students_month || 0);
+      setPassRateDelta(data.stats?.pass_rate_delta || 0);
+      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    } finally {
+      if (showSpinner) setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setLoading(true);
-    fetch('/api/instructor/dashboard', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then((data) => {
-        if (!data) return;
-        setCourseStats(data.course_stats || []);
-        setPerformanceData(data.performance_trend || []);
-        setRecentQuestions(data.recent_questions || []);
-        setStudentCount(data.stats?.total_students || 0);
-        setAvgPassRate(data.stats?.avg_pass_rate || 0);
-        setNewStudentsMonth(data.stats?.new_students_month || 0);
-        setPassRateDelta(data.stats?.pass_rate_delta || 0); // backend should provide this
-      })
-      .finally(() => setLoading(false));
+    let isMounted = true;
+
+    const loadWithGuard = async (showSpinner = false) => {
+      if (!isMounted) return;
+      await loadDashboard(showSpinner);
+    };
+
+    void loadWithGuard(true);
+    const intervalId = window.setInterval(() => {
+      void loadWithGuard(false);
+    }, 20000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const { pushToast } = useToast();
@@ -65,18 +90,7 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
               } catch (e) {
                 // ignore toast errors
               }
-              fetch('/api/instructor/dashboard', { credentials: 'include' })
-                .then(r => r.ok ? r.json() : null)
-                .then((d) => {
-                  if (!d) return;
-                  setCourseStats(d.course_stats || []);
-                  setPerformanceData(d.performance_trend || []);
-                  setRecentQuestions(d.recent_questions || []);
-                  setStudentCount(d.stats?.total_students || 0);
-                  setAvgPassRate(d.stats?.avg_pass_rate || 0);
-                  setNewStudentsMonth(d.stats?.new_students_month || 0);
-                  setPassRateDelta(d.stats?.pass_rate_delta || 0);
-                });
+              void loadDashboard(false);
             });
           } catch (err) {
             console.warn('Failed to attach Echo listener', err);
@@ -99,8 +113,8 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
   }, []);
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {loading && <div className="text-center py-8 text-slate-400">Loading dashboard...</div>}
+    <div className="space-y-6">
+      {loading && <div className="py-6"><LoadingState message="Loading dashboard" /></div>}
       {!loading && (
         <>
         {/* Page Header */}
@@ -109,38 +123,81 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 sm:text-2xl">Instructor Dashboard</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Welcome back</p>
           </div>
-          <div className="self-start text-xs text-slate-500 dark:text-slate-400 sm:self-auto sm:text-sm">Last updated: Today</div>
+          <div className="self-start text-xs text-slate-500 dark:text-slate-400 sm:self-auto sm:text-sm">
+            {lastUpdated ? `Last updated: Today, ${lastUpdated}` : 'Loading...'}
+          </div>
         </div>
 
         {/* Summary Cards */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
-          <div className="bg-white dark:bg-slate-900/80 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 p-4 sm:p-6 flex flex-col items-start">
-            <span className="text-slate-500 dark:text-slate-400 text-xs mb-1">Student Questions</span>
-            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{recentQuestions.length}</span>
-            <span className="text-xs text-blue-600 dark:text-blue-400 mt-1">Recent Q&A activity</span>
+          <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Student Questions</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{recentQuestions.length}</p>
+              </div>
+              <div className={statIconContainerClasses.blue}>
+                <Users className={statIconGlyphClasses.blue} />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <span className="text-slate-400 dark:text-slate-500">Recent Q&A activity</span>
+            </div>
           </div>
-          <div className="bg-white dark:bg-slate-900/80 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 p-4 sm:p-6 flex flex-col items-start">
-            <span className="text-slate-500 dark:text-slate-400 text-xs mb-1">My Courses</span>
-            <span className="text-2xl font-bold text-green-600 dark:text-green-400">{courseStats.length}</span>
-            <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">Active courses assigned</span>
+
+          <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md hover:border-green-200 dark:hover:border-green-700 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">My Courses</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{courseStats.length}</p>
+              </div>
+              <div className={statIconContainerClasses.green}>
+                <BookOpen className={statIconGlyphClasses.green} />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <span className="text-slate-400 dark:text-slate-500">Active courses assigned</span>
+            </div>
           </div>
-          <div className="bg-white dark:bg-slate-900/80 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 p-4 sm:p-6 flex flex-col items-start">
-            <span className="text-slate-500 dark:text-slate-400 text-xs mb-1">Total Students</span>
-            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{studentCount}</span>
-            <span className="text-xs text-green-600 dark:text-green-400 mt-1">+{newStudentsMonth} this month</span>
+
+          <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md hover:border-purple-200 dark:hover:border-purple-700 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Students</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{studentCount}</p>
+              </div>
+              <div className={statIconContainerClasses.purple}>
+                <Award className={statIconGlyphClasses.purple} />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <span className="text-slate-400 dark:text-slate-500">+{newStudentsMonth} this month</span>
+            </div>
           </div>
-          <div className="bg-white dark:bg-slate-900/80 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 p-4 sm:p-6 flex flex-col items-start">
-            <span className="text-slate-500 dark:text-slate-400 text-xs mb-1">Avg. Pass Rate</span>
-            <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">{avgPassRate}%</span>
-            <span className={`text-xs mt-1 ${passRateDelta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{passRateDelta >= 0 ? '+' : ''}{passRateDelta}% from last month</span>
+
+          <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Avg. Pass Rate</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{avgPassRate}%</p>
+              </div>
+              <div className={statIconContainerClasses.orange}>
+                <TrendingUp className={statIconGlyphClasses.orange} />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-sm">
+              <span className={`${passRateDelta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {passRateDelta >= 0 ? '+' : ''}{passRateDelta}% from last month
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Trends and Course Stats */}
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2 sm:gap-6">
           {/* Student Performance Trends */}
-          <div className="bg-white dark:bg-slate-900/80 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Student Performance Trends</h3>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Student Performance Trends</h3>
             <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={performanceData}>
@@ -156,8 +213,8 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
             </div>
           </div>
           {/* Course Enrollment vs Completion */}
-          <div className="bg-white dark:bg-slate-900/80 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 p-4 sm:p-6">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Course Enrollment vs Completion</h3>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Course Enrollment vs Completion</h3>
             <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={courseStats}>
@@ -175,30 +232,52 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
         </div>
 
         {/* Recent Student Questions */}
-        <div className="rounded-lg bg-white dark:bg-slate-900/80 border border-slate-100 dark:border-slate-700 p-4 sm:p-6 shadow-sm">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <div className="border-b border-slate-100 p-4 dark:border-slate-700 sm:p-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Student Questions</h3>
             <button
               onClick={() => onNavigate?.('qa-discussion')}
-              className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-md shadow-sm transition-colors"
+              className={`inline-flex items-center px-5 py-2.5 text-sm font-semibold rounded-md shadow-sm transition-colors ${actionButtonClasses.primary}`}
             >
               View All Q&A
             </button>
           </div>
-          <ul>
-            {recentQuestions.map((q) => (
-              <li key={q.id} className="flex flex-col gap-2 border-b border-slate-200 dark:border-slate-700 py-3 last:border-b-0 sm:flex-row sm:items-center">
-                <span className="bg-slate-200 dark:bg-slate-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 mr-3">
-                  {q.student?.[0] || '?'}
-                </span>
-                <div className="flex-1">
-                  <span className="font-medium text-slate-900 dark:text-slate-100">{q.student}</span> <span className="text-slate-500 dark:text-slate-400">in</span> <span className="text-slate-500 dark:text-slate-400">{q.course}</span>
-                  <div className="text-slate-600 dark:text-slate-300 text-sm mt-0.5">{q.question}</div>
-                </div>
-                <span className="text-xs text-slate-400 dark:text-slate-500 sm:ml-2">{q.time}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-800/80">
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300 sm:px-6">Student</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300 sm:px-6">Question</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300 sm:px-6">Course</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300 sm:px-6">Time</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-slate-900/40 divide-y divide-slate-200 dark:divide-slate-700">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-sm text-slate-400 dark:text-slate-500 sm:px-6">
+                      <LoadingState message="Loading questions" size="sm" className="py-2" />
+                    </td>
+                  </tr>
+                ) : recentQuestions.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-sm text-slate-400 dark:text-slate-500 sm:px-6">
+                      No questions yet
+                    </td>
+                  </tr>
+                ) : (
+                  recentQuestions.map((q) => (
+                    <tr key={q.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors">
+                      <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-slate-900 dark:text-slate-100 sm:px-6">{q.student || 'Unknown'}</td>
+                      <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-300 sm:px-6">{q.question}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-300 sm:px-6">{q.course}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-400 dark:text-slate-400 sm:px-6">{q.time}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
         </>
       )}

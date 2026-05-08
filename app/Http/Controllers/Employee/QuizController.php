@@ -17,7 +17,7 @@ class QuizController extends Controller
      */
     public function show(Request $request, int $quizId)
     {
-        $quiz = Quiz::with(['questions.options', 'module'])->findOrFail($quizId);
+        $quiz = Quiz::with(['questions.options', 'module', 'lesson'])->findOrFail($quizId);
 
         // Verify the employee is enrolled in this course
         $enrolled = Enrollment::where('user_id', $request->user()->id)
@@ -38,9 +38,12 @@ class QuizController extends Controller
             'id'              => $quiz->id,
             'title'           => $quiz->title,
             'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
             'module_id'       => $quiz->module_id,
             'module_title'    => $quiz->module?->title,
+            'lesson_id'       => $quiz->lesson_id,
+            'lesson_title'    => $quiz->lesson?->title,
             'best_attempt'    => $bestAttempt ? [
                 'score'           => $bestAttempt->score,
                 'total_questions' => $bestAttempt->total_questions,

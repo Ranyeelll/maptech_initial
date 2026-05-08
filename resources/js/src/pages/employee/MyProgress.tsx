@@ -12,6 +12,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { Clock, Award, CheckCircle, Loader } from 'lucide-react';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
 const COLORS = ['#22c55e', '#eab308', '#94a3b8'];
@@ -69,7 +70,7 @@ export function MyProgress() {
         <p className="text-red-500 font-medium">{error ?? 'Failed to load progress'}</p>
         <button
           onClick={() => { setError(null); setLoading(true); }}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
+          className={`px-4 py-2 rounded-lg text-sm ${actionButtonClasses.success}`}
         >
           Retry
         </button>

@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { safeArray } from '../../utils/safe';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
 
@@ -417,7 +418,7 @@ export function EnrollmentManagement() {
         </h1>
         <button
           onClick={openModal}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
+          className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium ${actionButtonClasses.primary} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400`}>
           <UserPlus className="h-4 w-4 mr-2" />
           New Enrollment
         </button>
@@ -530,15 +531,15 @@ export function EnrollmentManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      className={`relative inline-flex items-center rounded-full py-1 pl-7 pr-2.5 text-xs font-semibold leading-none align-middle ${
                         status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-emerald-500/20 dark:text-emerald-300' :
                         status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-amber-500/20 dark:text-amber-300' :
                         'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
                       }`}>
-                      {status === 'Completed' && <CheckCircle className="h-3 w-3 mr-1" />}
-                      {status === 'In Progress' && <Clock className="h-3 w-3 mr-1" />}
-                      {status === 'Not Started' && <AlertCircle className="h-3 w-3 mr-1" />}
-                      {status}
+                      {status === 'Completed' && <span className="absolute left-2 top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center"><CheckCircle className="h-3.5 w-3.5" /></span>}
+                      {status === 'In Progress' && <span className="absolute left-2 top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center"><Clock className="h-3.5 w-3.5" /></span>}
+                      {status === 'Not Started' && <span className="absolute left-2 top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center"><AlertCircle className="h-3.5 w-3.5" /></span>}
+                      <span className="leading-none">{status}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">

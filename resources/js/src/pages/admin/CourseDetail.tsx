@@ -30,6 +30,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { safeArray } from '../../utils/safe';
 import PDFViewer from '../../components/PDFViewer';
 import PresentationViewer from '../../components/PresentationViewer';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
 
@@ -182,7 +183,7 @@ function AddQuizForm({ moduleId, courseId, onCreated, onCancel, onManageQuiz }: 
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-1.5 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white text-sm font-medium rounded-md disabled:opacity-50 flex items-center gap-1.5"
+          className={`px-4 py-1.5 text-white text-sm font-medium rounded-md disabled:opacity-50 flex items-center gap-1.5 ${actionButtonClasses.success}`}
         >
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
           {saving ? 'Creating...' : 'Create & Add Questions'}
@@ -1189,7 +1190,7 @@ export function CourseDetail({ courseId, onBack, onManageQuiz }: CourseDetailPro
                                 <button
                                   onClick={() => handleAddLesson(mod.id)}
                                   disabled={uploadingLesson}
-                                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md disabled:opacity-50 flex items-center gap-1"
+                                            className={`px-3 py-1.5 text-white text-xs font-medium rounded-md disabled:opacity-50 flex items-center gap-1 ${actionButtonClasses.success}`}
                                 >
                                   {uploadingLesson ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                                   {uploadingLesson ? 'Saving...' : 'Save Lesson'}

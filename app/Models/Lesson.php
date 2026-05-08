@@ -70,6 +70,11 @@ class Lesson extends Model
         return $this->belongsTo(Module::class);
     }
 
+    public function quizzes()
+    {
+        return $this->hasMany(Quiz::class);
+    }
+
     /**
      * Get the custom lesson this lesson is synced from (if any).
      */

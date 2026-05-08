@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Quiz extends Model
 {
-    protected $fillable = ['course_id', 'module_id', 'title', 'description', 'pass_percentage'];
+    protected $fillable = ['course_id', 'module_id', 'lesson_id', 'quiz_type', 'title', 'description', 'pass_percentage'];
 
     protected $casts = [
         'pass_percentage' => 'integer',
+        'quiz_type' => 'string',
     ];
 
     public function course(): BelongsTo
@@ -22,6 +23,11 @@ class Quiz extends Model
     public function module(): BelongsTo
     {
         return $this->belongsTo(Module::class);
+    }
+
+    public function lesson(): BelongsTo
+    {
+        return $this->belongsTo(Lesson::class);
     }
 
     public function questions(): HasMany
