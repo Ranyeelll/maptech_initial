@@ -46,6 +46,80 @@ The platform also includes real-time notifications, content synchronization, aud
 
 ![Diagram 01](../images/diagram-01.png)
 
+```mermaid
+erDiagram
+    USERS {
+        int id
+        string email
+        string role
+    }
+    COURSES {
+        string id
+        string title
+        string department
+    }
+    MODULES {
+        int id
+        string course_id
+        string title
+    }
+    LESSONS {
+        int id
+        int module_id
+        string title
+    }
+    ENROLLMENTS {
+        int user_id
+        string course_id
+        int progress
+    }
+    MODULE_USER {
+        int module_id
+        int user_id
+        bool unlocked
+        datetime unlocked_until
+    }
+    QUIZZES {
+        int id
+        int module_id
+        string title
+    }
+    QUIZ_ATTEMPTS {
+        int user_id
+        int quiz_id
+        int percentage
+        bool passed
+    }
+    CERTIFICATES {
+        int user_id
+        string course_id
+        datetime completed_at
+    }
+    AUDIT_LOGS {
+        int id
+        int user_id
+        string action
+        datetime created_at
+    }
+    AUDIT_LOG_RETENTION_POLICIES {
+        int id
+        bool enabled
+        int retention_value
+        string retention_unit
+    }
+
+    USERS ||--o{ ENROLLMENTS : enrolls
+    COURSES ||--o{ ENROLLMENTS : includes
+    COURSES ||--o{ MODULES : contains
+    MODULES ||--o{ LESSONS : contains
+    MODULES ||--o{ QUIZZES : has
+    USERS ||--o{ QUIZ_ATTEMPTS : submits
+    QUIZZES ||--o{ QUIZ_ATTEMPTS : records
+    COURSES ||--o{ CERTIFICATES : awards
+    USERS ||--o{ CERTIFICATES : earns
+    USERS ||--o{ AUDIT_LOGS : writes
+```
+
 ## 4. Data Dictionary
 
 ### 4.1 Identity and Organization
@@ -90,6 +164,7 @@ The platform also includes real-time notifications, content synchronization, aud
 |---|---|---|---|
 | notifications | In-app notification feed | user_id, course_id, module_id, type, title, message, data, read_at | Broadcasts real-time updates and unread counts. |
 | audit_logs | Immutable security and activity log | user_id, action, ip_address, session_key, created_at, deleted_at | Soft deletes supported for retention management. |
+| audit_log_retention_policies | Retention policy configuration for audit logs | enabled, retention_value, retention_unit, created_at, updated_at | Defines retention window applied by app-level cleanup tasks. |
 | time_logs | Punch-in / punch-out tracking | user_id, session_key, login_audit_log_id, logout_audit_log_id, time_in, time_out, note, archived | Linked to audit logs for session traceability. |
 | sent_history | Announcement delivery history | sender_id, title, message, target, announcement_mode, data, target_roles, department_id, subdepartment_id, recipients_count, deleted_at | Keeps recent sends with retention trimming. |
 
@@ -571,6 +646,7 @@ Located in [app/Models](../app/Models). Each model uses Eloquent with timestamps
 | `2026_04_01` | Custom modules + versions + UI-component fields + session-link columns |
 | `2026_04_10` | `sent_history`, soft-deletes on notifications & audit logs |
 | `2026_04_17` | Recovery-key hash columns, sent_history extras |
+| `2026_05_25` | Audit log retention policies table |
 
 ### 9.2 Snapshot & restore
 
@@ -641,8 +717,17 @@ All API endpoints live in [routes/api.php](../routes/api.php). Authenticated end
 ### 10.6 Conventions
 
 - Errors: standard Laravel JSON validation envelope `{ "message": "...", "errors": { field: [..] } }`
+- Legacy responses: a few endpoints return `{ "success": true, "message": "..." }` without `errors`; client code should normalize.
 - Pagination: Laravel paginator JSON shape (`data`, `links`, `meta`) where applied
 - Timestamps: ISO-8601 UTC; client converts to local timezone (audit log payload uses `AuditDate::modelFieldUtcIso`)
+
+### 10.7 Legacy response endpoints
+
+The following endpoints return legacy `{ success, message, ... }` payloads instead of the validation envelope:
+
+- Password reset: `POST /api/password/forgot`, `POST /api/password/verify-otp`, `POST /api/password/reset`, `POST /api/password/resend-otp`, `POST /api/password/reset-with-recovery-key`
+- File conversion (public): `POST /api/convert/pdf-to-pptx`, `POST /api/convert/pptx-to-pdf`, `POST /api/convert/pptx-as-pdf`
+- File conversion (auth): `POST /api/convert/lessons/{lessonId}/pdf-to-pptx`, `POST /api/convert/modules/{moduleId}/pdf-to-pptx`
 
 ---
 
@@ -785,9 +870,32 @@ Authoritative reference: [CUSTOM_UI_COMPONENTS.md](../CUSTOM_UI_COMPONENTS.md).
 - `start_date` and `deadline` gate availability
 - Modules have `order` and an optional `pre_assessment` quiz that must be passed to unlock subsequent lessons
 - `module_user.unlocked_until` enables time-limited unlocks (see `run_time_limited_unlock_test.php`)
-- `CourseEnrollment.locked` allows admin/instructor to suspend access without unenrolling
-- Progress is computed from completed lessons + passed quizzes
+- `Enrollment.locked` allows admin/instructor to suspend access without unenrolling
+- Progress is computed from distinct passed quiz attempts per module; courses without quizzes are treated as complete
 - On full completion, a `Certificate` row is created and a PDF is generated using the user's signature, course logo, and business branding
+
+**Progress recalculation**
+- The employee dashboard recalculates enrollment progress per course on request by counting distinct passed quiz attempts per module and updating `Enrollment.progress` and `Enrollment.status`.
+- Completion triggers certificate generation if no certificate exists for the user-course pair.
+
+**Module unlock and access overrides**
+- `module_user.unlocked = true` grants manual access to a module; `unlocked_until` (when present) bounds access to a time window.
+- The employee dashboard treats a course as unlocked if at least one module has an active manual unlock, even if the enrollment itself is locked.
+- Unlock endpoints:
+    - Admin: `POST /api/admin/courses/{courseId}/enrollments/{userId}/unlock`, `POST /api/admin/courses/{courseId}/modules/{moduleId}/enrollments/{userId}/unlock`
+    - Instructor: `POST /api/instructor/courses/{courseId}/enrollments/{userId}/unlock`, `POST /api/instructor/courses/{courseId}/modules/{moduleId}/enrollments/{userId}/unlock`
+    - Instructor bulk: `POST /api/instructor/courses/{courseId}/modules/{moduleId}/unlock-department`, `POST /api/instructor/courses/{courseId}/unlock-department-all`
+
+```mermaid
+flowchart TD
+    A[Enrollment locked?] -->|No| B[Access allowed]
+    A -->|Yes| C{Any active module unlock?}
+    C -->|No| D[Access blocked]
+    C -->|Yes| E{unlocked_until set?}
+    E -->|No| B
+    E -->|Yes & in future| B
+    E -->|Yes & expired| D
+```
 
 **Bulk operations**
 - `POST /api/admin/courses/bulk-assign` — assign multiple courses to an instructor
@@ -847,6 +955,7 @@ Endpoints (session-authenticated, `routes/web.php`):
 - Helper: [app/Helpers/audit.php](../app/Helpers/audit.php) (autoloaded via composer `files`)
 - Date helper: [app/Support/AuditDate.php](../app/Support/AuditDate.php) — converts model timestamps to UTC ISO-8601 for API output
 - Storage: `audit_logs` (timestamptz, soft-deletes since `2026_04_10`)
+- Retention policy: `audit_log_retention_policies` stores a single configurable retention window (`retention_value` + `retention_unit`) and an `enabled` flag.
 - Tracked actions include: `login`, `logout`, course/module create/update/delete, enrollment lock/unlock, custom module push, password reset, user CRUD
 - Broadcast: `AuditLogCreated` event (admin dashboards stream live)
 - Endpoints: `GET /api/me/audit-logs` (own), `GET /api/admin/activity` (all)

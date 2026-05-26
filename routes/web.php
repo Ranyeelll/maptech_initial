@@ -15,7 +15,11 @@ use App\Http\Controllers\YouTubeController;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return response()->view('welcome')->withHeaders([
+        'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache',
+        'Expires' => '0',
+    ]);
 });
 
 Route::get('/media/profile-picture/{path}', function (string $path) {
@@ -50,7 +54,11 @@ SVG;
 Route::post('/login', [LoginController::class, 'login']);
 // Serve SPA for the login page via GET so the React app can handle routing
 Route::get('/login', function () {
-    return view('welcome');
+    return response()->view('welcome')->withHeaders([
+        'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache',
+        'Expires' => '0',
+    ]);
 });
 
 // =====================

@@ -253,61 +253,69 @@ export function App() {
     </button>
   );
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/user', {
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/user', {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawRole = (data.role ?? '').toLowerCase();
+        const role: User['role'] = rawRole === 'admin' || rawRole === 'instructor' || rawRole === 'employee' ? rawRole : 'employee';
+        setUser({
+          id: data.id,
+          role,
+          name: data.fullName ?? data.fullname ?? data.name,
+          fullName: data.fullName ?? data.fullname ?? data.name,
+          email: data.email,
+          department: data.department,
+          profile_picture: resolveImageUrl(data.profile_picture || null) || null,
         });
+        // persist display name as a quick fallback for UI components
+        try { localStorage.setItem('maptech_user_name', (data.fullName ?? data.fullname ?? data.name) || ''); } catch (e) { /* ignore */ }
 
-        if (response.ok) {
-          const data = await response.json();
-          const rawRole = (data.role ?? '').toLowerCase();
-          const role: User['role'] = rawRole === 'admin' || rawRole === 'instructor' || rawRole === 'employee' ? rawRole : 'employee';
-          setUser({
-            id: data.id,
-            role,
-            name: data.fullName ?? data.fullname ?? data.name,
-            fullName: data.fullName ?? data.fullname ?? data.name,
-            email: data.email,
-            department: data.department,
-            profile_picture: resolveImageUrl(data.profile_picture || null) || null,
-          });
-          // persist display name as a quick fallback for UI components
-          try { localStorage.setItem('maptech_user_name', (data.fullName ?? data.fullname ?? data.name) || ''); } catch (e) { /* ignore */ }
-
-          // Restore saved page for this role
-          const routeState = getRouteStateFromUrl();
-          const savedPage = localStorage.getItem(`maptech_page_${role}`);
-          const savedCourseId = localStorage.getItem(`maptech_courseId_${role}`);
-          if (routeState.page) {
-            setCurrentPage(routeState.page);
-          } else if (savedPage) {
-            setCurrentPage(savedPage);
-          }
-
-          if (routeState.courseId) {
-            setSelectedCourseId(routeState.courseId);
-          } else if (savedCourseId) {
-            setSelectedCourseId(savedCourseId);
-          }
+        // Restore saved page for this role
+        const routeState = getRouteStateFromUrl();
+        const savedPage = localStorage.getItem(`maptech_page_${role}`);
+        const savedCourseId = localStorage.getItem(`maptech_courseId_${role}`);
+        if (routeState.page) {
+          setCurrentPage(routeState.page);
+        } else if (savedPage) {
+          setCurrentPage(savedPage);
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
+        if (routeState.courseId) {
+          setSelectedCourseId(routeState.courseId);
+        } else if (savedCourseId) {
+          setSelectedCourseId(savedCourseId);
+        }
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     checkAuth();
   }, []);
 
   useEffect(() => {
     const onPopState = () => {
+      if (!user) {
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
+
       const routeState = getRouteStateFromUrl();
       if (routeState.page) {
         setCurrentPage(routeState.page);
@@ -317,6 +325,17 @@ export function App() {
 
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
+  }, [user]);
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
   }, []);
 
   useEffect(() => {
