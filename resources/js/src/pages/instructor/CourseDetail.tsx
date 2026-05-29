@@ -378,7 +378,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
   // Quiz state — keyed by module_id (now supports multiple quizzes per module)
   const [quizByModule, setQuizByModule] = useState<Record<number, QuizSummary[]>>({});
   const [quizzesLoading, setQuizzesLoading] = useState(false);
-  const [addingQuizForModule, setAddingQuizForModule] = useState<number | null>(null);
+  const [addingQuizForModule, setAddingQuizForModule] = useState<number | string | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [deletingQuizId, setDeletingQuizId] = useState<number | null>(null);
   const confirm = useConfirm();
