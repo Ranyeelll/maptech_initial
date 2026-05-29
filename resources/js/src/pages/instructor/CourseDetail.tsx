@@ -2144,7 +2144,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                         )}
                       </div>
 
-                      
+
 
                       {/* Post-Test Section */}
                       <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700">
