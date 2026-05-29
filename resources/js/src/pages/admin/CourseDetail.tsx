@@ -140,7 +140,10 @@ function AddQuizForm({ moduleId, courseId, onCreated, onCancel, onManageQuiz }: 
         body: JSON.stringify({ title: title.trim(), description: desc.trim() || null, pass_percentage: passPercent }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create quiz.');
+        if (!res.ok) {
+          const serverMsg = data?.message || (data?.errors ? JSON.stringify(data.errors) : null) || 'Failed to create quiz.';
+          throw new Error(serverMsg);
+        }
       onCreated(data);
       if (onManageQuiz) onManageQuiz(data.id, courseId);
     } catch (e: any) {

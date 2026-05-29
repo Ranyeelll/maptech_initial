@@ -132,11 +132,6 @@ export function InstructorLayout({
     icon: BookOpen
   },
   {
-    id: 'quiz-management',
-    label: 'Quiz Management',
-    icon: ClipboardList
-  },
-  {
     id: 'qa-discussion',
     label: 'Q&A',
     icon: MessageCircle
@@ -159,12 +154,12 @@ export function InstructorLayout({
 
   return (
     <div className={`app-theme-scope min-h-screen flex w-full min-w-0 overflow-x-clip ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 text-slate-100' : 'bg-slate-50 dark:bg-slate-900 text-slate-900'}`}>
-      {!isDesktop && isMobileSidebarOpen && <button type="button" aria-label="Close sidebar" className="fixed inset-0 z-20 bg-slate-950/60" onClick={() => setIsMobileSidebarOpen(false)} />}
-      <div
-        className={`fixed inset-y-0 left-0 z-30 flex ${sidebarWidthClass} flex-col border-r transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${sidebarTranslateClass} ${isDark ? 'border-slate-800/80 bg-slate-950/95 text-white' : 'border-slate-200 bg-white text-slate-800'}`}
-        onMouseEnter={() => { if (isDesktop) setIsSidebarHovered(true); }}
-        onMouseLeave={() => { if (isDesktop) setIsSidebarHovered(false); }}
-      >
+          {!isDesktop && isMobileSidebarOpen && <button type="button" aria-label="Close sidebar" className="fixed inset-0 z-20 bg-slate-950/60" onClick={() => setIsMobileSidebarOpen(false)} />}
+          <div
+            className={`fixed inset-y-0 left-0 z-30 flex ${sidebarWidthClass} flex-col border-r overflow-y-auto transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${sidebarTranslateClass} ${isDark ? 'border-slate-800/80 bg-slate-950/95 text-white' : 'border-slate-200 bg-white text-slate-800'}`}
+            onMouseEnter={() => { if (isDesktop) setIsSidebarHovered(true); }}
+            onMouseLeave={() => { if (isDesktop) setIsSidebarHovered(false); }}
+          >
         <div className="flex-1 flex flex-col min-h-0">
           <div className={`flex flex-col items-center border-b transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isDark ? 'bg-slate-950 border-transparent' : 'bg-slate-50 border-slate-200'} ${isSidebarCompact ? 'px-2 pt-4 pb-3' : 'px-4 pt-5 pb-4'}`}>
             <img
@@ -174,7 +169,7 @@ export function InstructorLayout({
             />
             {/* Company name intentionally hidden under the logo */}
           </div>
-          <div className="flex-1 flex flex-col overflow-y-auto pt-5 pb-4">
+          <div className="flex-1 flex flex-col pt-5 pb-4">
             <nav className={`mt-5 flex-1 space-y-1 ${isSidebarCompact ? 'px-3' : 'px-2'}`}>
               {safeArray(navItems).map((item) => {
                 const Icon = item.icon;

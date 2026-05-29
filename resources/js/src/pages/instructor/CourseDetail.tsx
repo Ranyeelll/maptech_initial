@@ -29,6 +29,7 @@ import UnlockModuleModal from '../../components/UnlockModuleModal';
 import DepartmentSelectModal from '../../components/DepartmentSelectModal';
 import useConfirm from '../../hooks/useConfirm';
 import { safeArray } from '../../utils/safe';
+import { QuizAssessmentManagement } from './QuizAssessmentManagement';
 
 const API_BASE = '/api';
 
@@ -36,13 +37,32 @@ const getCookie = (name: string) => {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop()?.split(';').shift();
-};
+}
 
 const getXsrfToken = async (): Promise<string> => {
   await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
   return decodeURIComponent(getCookie('XSRF-TOKEN') || '');
 };
 
+const LESSON_QUIZ_MAP_KEY = 'maptech_lesson_quiz_map';
+
+const loadLessonQuizMap = (): Record<string, number> => {
+  try {
+    const raw = localStorage.getItem(LESSON_QUIZ_MAP_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveLessonQuizMap = (quizId: number, lessonId: number) => {
+  try {
+    const next = { ...loadLessonQuizMap(), [String(quizId)]: lessonId };
+    localStorage.setItem(LESSON_QUIZ_MAP_KEY, JSON.stringify(next));
+  } catch {
+    // ignore storage errors
+  }
+};
 interface Lesson {
   id: number;
   title: string;
@@ -70,13 +90,16 @@ interface QuizSummary {
   description: string | null;
   pass_percentage: number;
   module_id: number | null;
+  lesson_id: number | null;
+  quiz_type: string | null;
   question_count: number;
   created_at: string;
 }
 
-// ── Inline form for attaching a quiz to a module ──────────────────────────────
+// Inline form for attaching a quiz to a module
 interface AddQuizFormProps {
   moduleId: number;
+  lessonId?: number | null;
   courseId: string;
   onCreated: (quiz: QuizSummary) => void;
   onCancel: () => void;
@@ -85,7 +108,7 @@ interface AddQuizFormProps {
   quizType?: 'pre-test' | 'post-test' | 'regular';
 }
 
-function AddQuizForm({ moduleId, courseId, onCreated, onCancel, onManageQuiz, apiPrefix, quizType = 'regular' }: AddQuizFormProps) {
+function AddQuizForm({ moduleId, lessonId = null, courseId, onCreated, onCancel, onManageQuiz, apiPrefix, quizType = 'regular' }: AddQuizFormProps) {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [passPercent, setPassPercent] = useState(70);
@@ -93,19 +116,55 @@ function AddQuizForm({ moduleId, courseId, onCreated, onCancel, onManageQuiz, ap
   const [err, setErr] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!title.trim()) { setErr('Quiz title is required.'); return; }
-    setSaving(true); setErr(null);
+    if (!title.trim()) {
+      setErr('Quiz title is required.');
+      return;
+    }
+
+    setSaving(true);
+    setErr(null);
+
     try {
       const xsrf = await getXsrfToken();
       const res = await fetch(`${API_BASE}/${apiPrefix}/modules/${moduleId}/quizzes`, {
         method: 'POST',
         credentials: 'include',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrf },
-        body: JSON.stringify({ title: title.trim(), description: desc.trim() || null, pass_percentage: passPercent, quiz_type: quizType }),
+        body: JSON.stringify({
+          title: title.trim(),
+          description: desc.trim() || null,
+          pass_percentage: passPercent,
+          quiz_type: quizType,
+          lesson_id: lessonId,
+        }),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create quiz.');
-      onCreated(data);
+      if (!res.ok) {
+        const serverMsg = data?.message || (data?.errors ? JSON.stringify(data.errors) : null) || 'Failed to create quiz.';
+        throw new Error(serverMsg);
+      }
+
+      if (lessonId != null) {
+        saveLessonQuizMap(data.id, lessonId);
+        try {
+          await fetch(`${API_BASE}/${apiPrefix}/quizzes/${data.id}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrf },
+            body: JSON.stringify({ lesson_id: lessonId }),
+          });
+        } catch {
+          // Non-blocking: local mapping already keeps UI in place.
+        }
+      }
+
+      onCreated({
+        ...data,
+        lesson_id: lessonId ?? data.lesson_id ?? null,
+        module_id: moduleId,
+        quiz_type: data.quiz_type || quizType,
+      });
       onManageQuiz(data.id, courseId);
     } catch (e: any) {
       setErr(e.message);
@@ -141,7 +200,8 @@ function AddQuizForm({ moduleId, courseId, onCreated, onCancel, onManageQuiz, ap
         <label className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">Pass Percentage</label>
         <input
           type="number"
-          min={1} max={100}
+          min={1}
+          max={100}
           value={passPercent}
           onChange={e => setPassPercent(Number(e.target.value))}
           className="w-20 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md py-1.5 px-2 text-sm text-center focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
@@ -361,11 +421,23 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
   // Quiz state — keyed by module_id (now supports multiple quizzes per module)
   const [quizByModule, setQuizByModule] = useState<Record<number, QuizSummary[]>>({});
   const [quizzesLoading, setQuizzesLoading] = useState(false);
+  const [courseQuizCount, setCourseQuizCount] = useState<number>(0);
   const [addingQuizForModule, setAddingQuizForModule] = useState<string | number | null>(null);
+  const [focusedQuizId, setFocusedQuizId] = useState<number | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [deletingQuizId, setDeletingQuizId] = useState<number | null>(null);
   const confirm = useConfirm();
   const { showConfirm } = confirm;
+  const inferQuizType = (quiz: QuizSummary) => {
+    const title = (quiz.title || '').toLowerCase();
+    const description = (quiz.description || '').toLowerCase();
+    const typed = (quiz.quiz_type || '').toLowerCase();
+    if (typed === 'pre-test' || title.includes('pre-test') || description.includes('pre-test')) return 'pre-test';
+    if (typed === 'post-test' || title.includes('post-test') || description.includes('post-test')) return 'post-test';
+    if (typed === 'final-assessment' || title.includes('final assessment') || description.includes('final assessment')) return 'final-assessment';
+    return quiz.lesson_id ? 'regular' : 'regular';
+  };
+
   const [unenrollConfirm, setUnenrollConfirm] = useState<{ userId: number; name: string } | null>(null);
   const [unlockModalAction, setUnlockModalAction] = useState<'unlock' | 'lock'>('unlock');
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
@@ -373,11 +445,17 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
   const [deptModalOpen, setDeptModalOpen] = useState(false);
   const [deptModalModuleId, setDeptModalModuleId] = useState<number | null>(null);
   const [deptModalAction, setDeptModalAction] = useState<'unlock' | 'lock'>('unlock');
+  const persistedLessonQuizIdsRef = useRef<Set<number>>(new Set());
   // Simple "unlock for all enrolled users" modal state
   const [moduleUnlockAllOpen, setModuleUnlockAllOpen] = useState(false);
   const [moduleUnlockAllModuleId, setModuleUnlockAllModuleId] = useState<number | null>(null);
   const [moduleUnlockDuration, setModuleUnlockDuration] = useState<number>(1440);
   const [moduleUnlockPermanent, setModuleUnlockPermanent] = useState(false);
+
+  const openQuizInManager = (quizId: number) => {
+    setFocusedQuizId(quizId);
+    setActiveTab('quizzes');
+  };
 
   // Edit module state
   const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
@@ -717,6 +795,20 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
     });
   };
 
+  const persistLessonQuizMapping = useCallback(async (quizId: number, lessonId: number) => {
+    try {
+      const token = await getXsrfToken();
+      await fetch(`${API_BASE}/${apiPrefix}/quizzes/${quizId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token },
+        body: JSON.stringify({ lesson_id: lessonId }),
+      });
+    } catch {
+      // ignore persistence errors; UI still uses local mapping
+    }
+  }, [apiPrefix]);
+
   const loadQuizzes = async () => {
     setQuizzesLoading(true);
     try {
@@ -726,14 +818,34 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
       });
       if (res.ok) {
         const quizzes: QuizSummary[] = await res.json();
+        const lessonQuizMap = loadLessonQuizMap();
+        const pendingLessonAssignments: Array<{ quizId: number; lessonId: number }> = [];
+        const normalizedQuizzes = quizzes.map((quiz) => {
+          if (quiz.lesson_id != null) return quiz;
+          const mappedLessonId = lessonQuizMap[String(quiz.id)];
+          if (mappedLessonId) {
+            pendingLessonAssignments.push({ quizId: quiz.id, lessonId: mappedLessonId });
+            return { ...quiz, lesson_id: mappedLessonId };
+          }
+          return quiz;
+        });
+        // Total quizzes in this course (including course-level quizzes)
+        setCourseQuizCount(normalizedQuizzes.length);
         const byModule: Record<number, QuizSummary[]> = {};
-        quizzes.forEach(q => {
+        normalizedQuizzes.forEach((quiz) => {
+          const q = { ...quiz, quiz_type: inferQuizType(quiz) };
           if (q.module_id !== null) {
             if (!byModule[q.module_id]) byModule[q.module_id] = [];
             byModule[q.module_id].push(q);
           }
         });
         setQuizByModule(byModule);
+
+        pendingLessonAssignments.forEach(({ quizId, lessonId }) => {
+          if (persistedLessonQuizIdsRef.current.has(quizId)) return;
+          persistedLessonQuizIdsRef.current.add(quizId);
+          persistLessonQuizMapping(quizId, lessonId);
+        });
       }
     } catch (_) {
       // non-critical
@@ -1419,6 +1531,20 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
           </span>
         </button>
         <button
+          onClick={() => setActiveTab('quizzes')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'quizzes'
+              ? 'border-green-600 text-green-700'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <HelpCircle className="h-4 w-4" />
+            Quizzes
+            <span className="text-xs bg-slate-100 text-slate-600 rounded-full px-1.5 py-0.5">{courseQuizCount}</span>
+          </span>
+        </button>
+        <button
           onClick={() => setActiveTab('students')}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'students'
@@ -1614,30 +1740,68 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                           <HelpCircle className="h-3.5 w-3.5" />
                           Pre-Test (Before Lessons)
                         </p>
-                        {addingQuizForModule === `pre-test-${mod.id}` ? (
-                          <AddQuizForm
-                            moduleId={mod.id}
-                            courseId={courseId}
-                            quizType="pre-test"
-                            onCreated={(q) => {
-                              setQuizByModule(prev => ({
-                                ...prev,
-                                [mod.id]: [...(prev[mod.id] || []), q]
-                              }));
-                              setAddingQuizForModule(null);
-                            }}
-                            onCancel={() => setAddingQuizForModule(null)}
-                            onManageQuiz={onManageQuiz}
-                            apiPrefix={apiPrefix}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => setAddingQuizForModule(`pre-test-${mod.id}`)}
-                            className="btn btn-primary btn-sm"
-                          >
-                            <Plus className="h-4 w-4" /> Add Pre-Test
-                          </button>
-                        )}
+                        {(() => {
+                          const quizzes = quizByModule[mod.id] || [];
+
+                          if (addingQuizForModule === `pre-test-${mod.id}`) {
+                            return (
+                              <AddQuizForm
+                                moduleId={mod.id}
+                                courseId={courseId}
+                                quizType="pre-test"
+                                onCreated={(q) => {
+                                  setQuizByModule(prev => ({
+                                    ...prev,
+                                    [mod.id]: [...(prev[mod.id] || []), q]
+                                  }));
+                                  setAddingQuizForModule(null);
+                                }}
+                                onCancel={() => setAddingQuizForModule(null)}
+                                onManageQuiz={onManageQuiz}
+                                apiPrefix={apiPrefix}
+                              />
+                            );
+                          }
+
+                          // List all pre-test quizzes for this module
+                          const preTests = quizzes.filter((q: any) => inferQuizType(q) === 'pre-test');
+
+                          return (
+                            <div>
+                              {preTests.length > 0 ? (
+                                <div className="space-y-2 mb-2">
+                                  {preTests.map(pt => (
+                                    <div key={pt.id} className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                          <HelpCircle className="h-4 w-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-semibold text-slate-900">{pt.title}</p>
+                                          {pt.description && <p className="text-xs text-slate-500 mt-0.5">{pt.description}</p>}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button onClick={() => openQuizInManager(pt.id)} className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/25 rounded" title="Edit quiz">
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button onClick={() => handleDeleteQuiz(pt.id)} disabled={deletingQuizId === pt.id} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded disabled:opacity-40">
+                                          {deletingQuizId === pt.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+
+                              {preTests.length === 0 && (
+                                <button onClick={() => setAddingQuizForModule(`pre-test-${mod.id}`)} className="btn btn-primary btn-sm">
+                                  <Plus className="h-4 w-4" /> Add Pre-Test
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Lessons list */}
@@ -1780,11 +1944,47 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                                 </div>
                                 {/* End Lesson Display */}
 
+                                  {/* Quizzes attached to this lesson */}
+                                  {(() => {
+                                    const lessonQuizzes = (quizByModule[mod.id] || []).filter((q: any) => Number(q.lesson_id) === Number(lesson.id));
+                                    return lessonQuizzes.length > 0 ? (
+                                      <div className="mt-2 ml-6 space-y-2">
+                                        {lessonQuizzes.map((lq: any) => (
+                                          <div key={lq.id} className="bg-blue-50 dark:bg-slate-700/50 border border-blue-100 dark:border-slate-600 rounded-lg p-3">
+                                            <div className="flex items-start justify-between gap-4">
+                                              <div className="flex items-start gap-3">
+                                                <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                                                  <HelpCircle className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                                                </div>
+                                                <div>
+                                                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{lq.title}</p>
+                                                  {lq.description && <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{lq.description}</p>}
+                                                  <div className="flex gap-3 mt-1 text-xs text-slate-500 dark:text-slate-300">
+                                                    <span>{lq.question_count} question{lq.question_count !== 1 ? 's' : ''}</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 flex-shrink-0">
+                                                <button onClick={() => openQuizInManager(lq.id)} className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/25 rounded" title="Edit quiz">
+                                                  <Pencil className="h-4 w-4" />
+                                                </button>
+                                                <button onClick={() => handleDeleteQuiz(lq.id)} disabled={deletingQuizId === lq.id} className="p-1.5 text-red-400 dark:text-rose-300 hover:text-red-600 dark:hover:text-rose-200 hover:bg-red-100 dark:hover:bg-rose-900/25 rounded disabled:opacity-40">
+                                                  {deletingQuizId === lq.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : null;
+                                  })()}
+
                                 {/* Add Quiz After This Lesson */}
                                 {addingQuizForModule === `after-lesson-${lesson.id}` ? (
                                   <div className="mt-2 ml-6">
                                     <AddQuizForm
                                       moduleId={mod.id}
+                                      lessonId={lesson.id}
                                       courseId={courseId}
                                       onCreated={(q) => {
                                         setQuizByModule(prev => ({
@@ -1804,7 +2004,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                                       onClick={() => setAddingQuizForModule(`after-lesson-${lesson.id}`)}
                                       className="btn btn-primary btn-xs"
                                     >
-                                      <Plus className="h-3.5 w-3.5" /> Add Quiz After This Lesson
+                                      <Plus className="h-3.5 w-3.5" /> Add Quiz Here
                                     </button>
                                   </div>
                                 )}
@@ -1813,6 +2013,51 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                             })}
                           </div>
                         )}
+
+                        {/* Quizzes that belong directly to the module */}
+                        {(() => {
+                          const moduleQuizzes = quizzes.filter((q: any) => inferQuizType(q) === 'regular' && !q.lesson_id);
+                          return moduleQuizzes.length > 0 ? (
+                            <div className="mt-3 space-y-2">
+                              {moduleQuizzes.map((quiz: any) => (
+                                <div key={quiz.id} className="bg-blue-50 dark:bg-slate-700/50 border border-blue-100 dark:border-slate-600 rounded-lg p-3">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                      <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                                        <HelpCircle className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{quiz.title}</p>
+                                        {quiz.description && <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{quiz.description}</p>}
+                                        <div className="flex gap-3 mt-1 text-xs text-slate-500 dark:text-slate-300">
+                                          <span>{quiz.question_count} question{quiz.question_count !== 1 ? 's' : ''}</span>
+                                          <span>·</span>
+                                          <span className="flex items-center gap-1">
+                                            <Lock className="h-3 w-3 text-amber-500" />
+                                            Must score <strong className="text-amber-700 dark:text-amber-300 mx-0.5">{quiz.pass_percentage}%</strong> to unlock next module
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <button
+                                        onClick={() => handleDeleteQuiz(quiz.id)}
+                                        disabled={deletingQuizId === quiz.id}
+                                        className="p-1.5 text-red-400 dark:text-rose-300 hover:text-red-600 dark:hover:text-rose-200 hover:bg-red-100 dark:hover:bg-rose-900/25 rounded disabled:opacity-40"
+                                      >
+                                        {deletingQuizId === quiz.id
+                                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                                          : <Trash2 className="h-4 w-4" />}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+
+                        {/* Module-level add removed; use per-lesson "Add Quiz Here" only */}
 
                         {/* Add Lesson form */}
                         {addingLessonForModule === mod.id ? (
@@ -1899,81 +2144,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                         )}
                       </div>
 
-                      {/* Quiz section - Support multiple quizzes */}
-                      <div className="border-t border-slate-100 dark:border-slate-700 px-6 py-3">
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-300 uppercase tracking-wide mb-2">Quizzes</p>
-
-                        {/* Display all quizzes for this module */}
-                        {quizzes.length > 0 && (
-                          <div className="space-y-2 mb-3">
-                            {quizzes.map((quiz) => (
-                              <div key={quiz.id} className="bg-blue-50 dark:bg-slate-700/50 border border-blue-100 dark:border-slate-600 rounded-lg p-3">
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex items-start gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
-                                      <HelpCircle className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{quiz.title}</p>
-                                      {quiz.description && <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">{quiz.description}</p>}
-                                      <div className="flex gap-3 mt-1 text-xs text-slate-500 dark:text-slate-300">
-                                        <span>{quiz.question_count} question{quiz.question_count !== 1 ? 's' : ''}</span>
-                                        <span>·</span>
-                                        <span className="flex items-center gap-1">
-                                          <Lock className="h-3 w-3 text-amber-500" />
-                                          Must score <strong className="text-amber-700 dark:text-amber-300 mx-0.5">{quiz.pass_percentage}%</strong> to unlock next module
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <button
-                                      onClick={() => onManageQuiz(quiz.id, courseId)}
-                                      className="btn btn-primary btn-sm"
-                                    >
-                                      Manage Quiz
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteQuiz(quiz.id)}
-                                      disabled={deletingQuizId === quiz.id}
-                                      className="p-1.5 text-red-400 dark:text-rose-300 hover:text-red-600 dark:hover:text-rose-200 hover:bg-red-100 dark:hover:bg-rose-900/25 rounded disabled:opacity-40"
-                                    >
-                                      {deletingQuizId === quiz.id
-                                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                                        : <Trash2 className="h-4 w-4" />}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Add Quiz form or button */}
-                        {addingQuizForModule === mod.id ? (
-                          <AddQuizForm
-                            moduleId={mod.id}
-                            courseId={courseId}
-                            onCreated={(q) => {
-                              setQuizByModule(prev => ({
-                                ...prev,
-                                [mod.id]: [...(prev[mod.id] || []), q]
-                              }));
-                              setAddingQuizForModule(null);
-                            }}
-                            onCancel={() => setAddingQuizForModule(null)}
-                            onManageQuiz={onManageQuiz}
-                            apiPrefix={apiPrefix}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => setAddingQuizForModule(mod.id)}
-                            className="btn btn-primary btn-sm"
-                          >
-                            <Plus className="h-4 w-4" /> Add Quiz
-                          </button>
-                        )}
-                      </div>
+                      
 
                       {/* Post-Test Section */}
                       <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700">
@@ -1981,30 +2152,68 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                           <HelpCircle className="h-3.5 w-3.5" />
                           Post-Test (After All Content)
                         </p>
-                        {addingQuizForModule === `post-test-${mod.id}` ? (
-                          <AddQuizForm
-                            moduleId={mod.id}
-                            courseId={courseId}
-                            quizType="post-test"
-                            onCreated={(q) => {
-                              setQuizByModule(prev => ({
-                                ...prev,
-                                [mod.id]: [...(prev[mod.id] || []), q]
-                              }));
-                              setAddingQuizForModule(null);
-                            }}
-                            onCancel={() => setAddingQuizForModule(null)}
-                            onManageQuiz={onManageQuiz}
-                            apiPrefix={apiPrefix}
-                          />
-                        ) : (
-                          <button
-                            onClick={() => setAddingQuizForModule(`post-test-${mod.id}`)}
-                            className="btn btn-primary btn-sm"
-                          >
-                            <Plus className="h-4 w-4" /> Add Post-Test
-                          </button>
-                        )}
+                        {(() => {
+                          const quizzes = quizByModule[mod.id] || [];
+
+                          if (addingQuizForModule === `post-test-${mod.id}`) {
+                            return (
+                              <AddQuizForm
+                                moduleId={mod.id}
+                                courseId={courseId}
+                                quizType="post-test"
+                                onCreated={(q) => {
+                                  setQuizByModule(prev => ({
+                                    ...prev,
+                                    [mod.id]: [...(prev[mod.id] || []), q]
+                                  }));
+                                  setAddingQuizForModule(null);
+                                }}
+                                onCancel={() => setAddingQuizForModule(null)}
+                                onManageQuiz={onManageQuiz}
+                                apiPrefix={apiPrefix}
+                              />
+                            );
+                          }
+
+                          // List all post-test quizzes for this module
+                          const postTests = quizzes.filter((q: any) => inferQuizType(q) === 'post-test');
+
+                          return (
+                            <div>
+                              {postTests.length > 0 ? (
+                                <div className="space-y-2 mb-2">
+                                  {postTests.map(pt => (
+                                    <div key={pt.id} className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                          <HelpCircle className="h-4 w-4 text-purple-600" />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-semibold text-slate-900">{pt.title}</p>
+                                          {pt.description && <p className="text-xs text-slate-500 mt-0.5">{pt.description}</p>}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button onClick={() => openQuizInManager(pt.id)} className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/25 rounded" title="Edit quiz">
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button onClick={() => handleDeleteQuiz(pt.id)} disabled={deletingQuizId === pt.id} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded disabled:opacity-40">
+                                          {deletingQuizId === pt.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+
+                              {postTests.length === 0 && (
+                                <button onClick={() => setAddingQuizForModule(`post-test-${mod.id}`)} className="btn btn-primary btn-sm">
+                                  <Plus className="h-4 w-4" /> Add Post-Test
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
@@ -2021,6 +2230,26 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
           </div>
         )}
       </div>
+      )}
+
+      {/* Quizzes Panel */}
+      {activeTab === 'quizzes' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-slate-600" />
+              <h2 className="text-base font-semibold text-slate-900">Quiz Management</h2>
+            </div>
+          </div>
+          <div className="p-6">
+            <QuizAssessmentManagement
+              apiPrefix={apiPrefix}
+              courseId={courseId}
+              focusQuizId={focusedQuizId}
+              onOpenQuiz={(quizId: number) => { if (onManageQuiz) onManageQuiz(quizId, courseId); }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Enrolled Students Tab */}

@@ -39,7 +39,6 @@ const AdminQADiscussion = lazy(() => import('./pages/admin/QADiscussion').then((
 const InstructorDashboard = lazy(() => import('./pages/instructor/InstructorDashboard').then((module) => ({ default: module.InstructorDashboard })));
 const InstructorCourseManagement = lazy(() => import('./pages/instructor/CourseManagement').then((module) => ({ default: module.InstructorCourseManagement })));
 const InstructorCourseDetail = lazy(() => import('./pages/instructor/CourseDetail').then((module) => ({ default: module.InstructorCourseDetail })));
-const QuizAssessmentManagement = lazy(() => import('./pages/instructor/QuizAssessmentManagement').then((module) => ({ default: module.QuizAssessmentManagement })));
 const LessonVideoUpload = lazy(() => import('./pages/instructor/LessonVideoUpload').then((module) => ({ default: module.LessonVideoUpload })));
 const QuizEvaluation = lazy(() => import('./pages/instructor/QuizEvaluation').then((module) => ({ default: module.QuizEvaluation })));
 const InstructorNotifications = lazy(() => import('./pages/instructor/InstructorNotifications').then((module) => ({ default: module.InstructorNotifications })));
@@ -153,8 +152,7 @@ export function App() {
     if (user.role === 'instructor') {
       const page = findPageByKeywords(query, [
         { page: 'dashboard', keywords: ['dashboard', 'home'] },
-        { page: 'courses', keywords: ['course', 'courses', 'module', 'lesson', 'content'] },
-        { page: 'quiz-management', keywords: ['quiz', 'assessment', 'question'] },
+        { page: 'courses', keywords: ['course', 'courses', 'module', 'lesson', 'content', 'quiz'] },
         { page: 'notifications', keywords: ['notification', 'notifications', 'alert'] },
         { page: 'qa-discussion', keywords: ['q&a', 'qa', 'discussion'] },
         { page: 'feedbacks', keywords: ['feedback', 'review'] },
@@ -688,8 +686,7 @@ export function App() {
             {currentPage === 'departments' && <DepartmentManagement />}
             {currentPage === 'users' && <UserManagement currentUserEmail={user?.email} onLogout={async () => handleLogout()} />}
             {currentPage === 'courses' && <CoursesAndContent onNavigate={handleNavigate} />}
-            {currentPage === 'course-detail' && <InstructorCourseDetail courseId={selectedCourseId || ''} onBack={() => handleNavigate('courses')} onManageQuiz={(quizId, courseId) => { setSelectedCourseId(courseId); handleNavigate('quiz-management', courseId, quizId); }} apiPrefix="admin" />}
-            {currentPage === 'quiz-management' && <QuizAssessmentManagement apiPrefix="admin" />}
+            {currentPage === 'course-detail' && <InstructorCourseDetail courseId={selectedCourseId || ''} onBack={() => handleNavigate('courses')} onManageQuiz={(quizId, courseId) => { setSelectedCourseId(courseId); handleNavigate('course-detail', courseId, quizId); }} apiPrefix="admin" />}
             {currentPage === 'evaluation' && <QuizEvaluation apiPrefix="admin" />}
             {currentPage === 'lessons' && <LessonVideoUpload apiPrefix="admin" />}
             {currentPage === 'enrollments' && <EnrollmentManagement />}
@@ -708,7 +705,7 @@ export function App() {
             )}
             {currentPage === 'settings' && <ProfileSettings />}
           {/* Fallback to custom module page for any unmatched route */}
-          {!['dashboard', 'departments', 'users', 'courses', 'custom-field', 'course-detail', 'quiz-management', 'evaluation', 'lessons', 'course-content-editor', 'enrollments', 'reports', 'notifications', 'qa', 'audit-logs', 'business-details', 'feedbacks', 'product-logos', 'settings'].includes(currentPage) && (
+          {!['dashboard', 'departments', 'users', 'courses', 'custom-field', 'course-detail', 'evaluation', 'lessons', 'course-content-editor', 'enrollments', 'reports', 'notifications', 'qa', 'audit-logs', 'business-details', 'feedbacks', 'product-logos', 'settings'].includes(currentPage) && (
             <CustomModulePage routePath={currentPage} />
           )}
           </div>
@@ -743,9 +740,8 @@ export function App() {
           <div key={transitionKey} className="page-open-transition">
             {currentPage === 'dashboard' && <InstructorDashboard onNavigate={handleNavigate} />}
             {currentPage === 'courses' && <InstructorCourseManagement onNavigate={handleNavigate} />}
-            {currentPage === 'course-detail' && <InstructorCourseDetail courseId={selectedCourseId || ''} onBack={() => handleNavigate('courses')} onManageQuiz={(quizId, courseId) => { setSelectedCourseId(courseId); handleNavigate('quiz-management', courseId, quizId); }} />}
+            {currentPage === 'course-detail' && <InstructorCourseDetail courseId={selectedCourseId || ''} onBack={() => handleNavigate('courses')} onManageQuiz={(quizId, courseId) => { setSelectedCourseId(courseId); handleNavigate('course-detail', courseId, quizId); }} />}
             {currentPage === 'custom-module-detail' && selectedCustomModuleId && <CustomModuleViewer moduleId={selectedCustomModuleId} apiPath="instructor/custom-modules" editApiPath="instructor/custom-modules" allowEdit={true} onBack={() => handleNavigate('courses')} />}
-            {currentPage === 'quiz-management' && <QuizAssessmentManagement />}
             {currentPage === 'lessons' && <LessonVideoUpload />}
             {currentPage === 'quizzes' && <QuizAssessmentManagement />}
             {currentPage === 'evaluation' && <QuizEvaluation />}
