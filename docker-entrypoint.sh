@@ -8,7 +8,7 @@ php artisan route:cache
 php artisan view:cache
 
 # Create the storage symlink if it doesn't already exist
-php artisan storage:link --force 2>/dev/null || true
+php artisan storage:link --force || echo "storage:link warning (possibly already exists)"
 
 # Start Laravel dev server
 exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"

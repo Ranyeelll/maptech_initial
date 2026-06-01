@@ -44,6 +44,9 @@ RUN mkdir -p storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
+        storage/app \
+        storage/app/public \
+        storage/app/conversions \
         bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 

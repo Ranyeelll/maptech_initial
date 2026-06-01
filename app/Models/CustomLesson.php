@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class CustomLesson extends Model
 {
@@ -65,7 +64,7 @@ class CustomLesson extends Model
             return $this->content_path;
         }
 
-        return Storage::disk('public')->url($this->content_path);
+        return '/storage/'.ltrim($this->content_path, '/');
     }
 
     /**

@@ -530,7 +530,7 @@ class FileConversionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'pdf_url' => asset('storage/'.$relativePath),
+                'pdf_url' => '/storage/'.$relativePath,
             ]);
         } catch (Exception $e) {
             Log::error('Get PPTX as PDF failed', [
