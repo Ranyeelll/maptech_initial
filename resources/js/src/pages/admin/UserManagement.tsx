@@ -60,9 +60,11 @@ const API_BASE = '/api';
 type UserManagementProps = {
   currentUserEmail?: string;
   onLogout?: () => void | Promise<void>;
+  mode?: 'active' | 'archived';
+  onNavigate?: (page: string) => void;
 };
 
-export function UserManagement({ currentUserEmail, onLogout }: UserManagementProps) {
+export function UserManagement({ currentUserEmail, onLogout, mode = 'active', onNavigate }: UserManagementProps) {
   const confirm = useConfirm();
   const { showConfirm } = confirm;
   const [users, setUsers] = useState<User[]>([]);
@@ -71,7 +73,7 @@ export function UserManagement({ currentUserEmail, onLogout }: UserManagementPro
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [roleFilter, setRoleFilter] = useState<'All' | 'Admin' | 'Instructor' | 'Employee'>('All');
-  const [listMode, setListMode] = useState<'active' | 'archived'>('active');
+  const [listMode, setListMode] = useState<'active' | 'archived'>(mode);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -815,76 +817,54 @@ export function UserManagement({ currentUserEmail, onLogout }: UserManagementPro
 
   return (
     <div className="space-y-6 ui-pop-grid um-shell">
-      <div className="relative z-40 overflow-visible flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 um-header">
-        <div className="flex items-center space-x-3">
-          <div className="relative z-50" ref={addUserDropdownRef}>
-            <button
-              onClick={() => setShowAddUserDropdown(!showAddUserDropdown)}
-              className="um-action-btn inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white !bg-indigo-600 hover:!bg-indigo-700 dark:!bg-indigo-500 dark:hover:!bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-            >
-              <Plus className="h-4 w-4" />
-              Add User
-              <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {showAddUserDropdown && (
-              <div className="absolute right-0 top-full z-[80] mt-2 w-48">
-                <div className="py-1 rounded-md border border-slate-700/70 bg-slate-900/95 backdrop-blur-sm">
-                  <button
-                    onClick={() => handleOpenModal(undefined, 'Admin')}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-purple-500 mr-3"></span>
-                    Add Admin
-                  </button>
-                  <button
-                    onClick={() => handleOpenModal(undefined, 'Instructor')}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mr-3"></span>
-                    Add Instructor
-                  </button>
-                  <button
-                    onClick={() => handleOpenModal(undefined, 'Employee')}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></span>
-                    Add Employee
-                  </button>
+      {listMode !== 'archived' && (
+        <div className="relative z-40 overflow-visible flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 um-header">
+          <div className="flex items-center space-x-3">
+            <div className="relative z-50" ref={addUserDropdownRef}>
+              <button
+                onClick={() => setShowAddUserDropdown(!showAddUserDropdown)}
+                className="um-action-btn inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white !bg-indigo-600 hover:!bg-indigo-700 dark:!bg-indigo-500 dark:hover:!bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+              >
+                <Plus className="h-4 w-4" />
+                Add User
+                <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showAddUserDropdown && (
+                <div className="absolute right-0 top-full z-[80] mt-2 w-48">
+                  <div className="py-1 rounded-md border border-slate-700/70 bg-slate-900/95 backdrop-blur-sm">
+                    <button
+                      onClick={() => handleOpenModal(undefined, 'Admin')}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-purple-500 mr-3"></span>
+                      Add Admin
+                    </button>
+                    <button
+                      onClick={() => handleOpenModal(undefined, 'Instructor')}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-blue-500 mr-3"></span>
+                      Add Instructor
+                    </button>
+                    <button
+                      onClick={() => handleOpenModal(undefined, 'Employee')}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 transition-colors flex items-center"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></span>
+                      Add Employee
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4 dark:bg-slate-900/80 dark:border-slate-700/80 ui-pop-in ui-force-pop um-filter-panel">
-        <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60">
-          <button
-            type="button"
-            onClick={() => setListMode('active')}
-            className={`px-3 py-2 text-sm font-medium rounded-md transition ${
-              listMode === 'active'
-                ? 'bg-green-600 text-white shadow'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-            }`}
-          >
-            Active
-          </button>
-          <button
-            type="button"
-            onClick={() => setListMode('archived')}
-            className={`px-3 py-2 text-sm font-medium rounded-md transition ${
-              listMode === 'archived'
-                ? 'bg-slate-700 text-white shadow dark:bg-slate-200 dark:text-slate-900'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-            }`}
-          >
-            Archived
-          </button>
-        </div>
         <div className="relative flex-1">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <Search className="h-5 w-5 text-slate-400" />

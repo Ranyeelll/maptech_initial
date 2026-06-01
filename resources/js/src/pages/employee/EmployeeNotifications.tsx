@@ -826,10 +826,10 @@ export function EmployeeNotifications() {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
-                        className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        className="btn-icon btn-icon-delete um-icon-btn"
                         title="Delete notification"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -909,17 +909,17 @@ export function EmployeeNotifications() {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); restoreNotification(notification.id); }}
-                        className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-300"
+                        className="btn-icon btn-icon-view um-icon-btn"
                         title="Restore"
                       >
-                        <RotateCcw className="h-5 w-5" />
+                        <RotateCcw className="h-4 w-4" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); permanentlyDeleteNotification(notification.id); }}
-                        className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-300"
+                        className="btn-icon btn-icon-delete um-icon-btn"
                         title="Delete permanently"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

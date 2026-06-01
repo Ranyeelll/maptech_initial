@@ -737,7 +737,7 @@ export function AdminDashboard({ onNavigate }: Props) {
               <div className="flex items-center justify-center h-full text-slate-400">No trend data yet</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyTrendChartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                <LineChart data={fullYearMonthlyTrends} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="2 6" vertical={false} stroke={chartGridColor} />
                   <XAxis
                     dataKey="name"

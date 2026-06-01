@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { Archive, RotateCcw } from 'lucide-react';
 
 interface FeedbackItem {
   id: number;
@@ -129,13 +130,13 @@ export function FeedbackList({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={selectAll}
-            className="rounded-full border border-slate-200/70 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Select all
           </button>
           <button
             onClick={clearAll}
-            className="rounded-full border border-slate-200/70 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Clear
           </button>
@@ -199,9 +200,10 @@ export function FeedbackList({
                       <button
                         type="button"
                         onClick={() => onArchiveToggle(item, !isArchivedList)}
-                        className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        className={`btn-icon ${isArchivedList ? 'btn-icon-view' : 'btn-icon-delete'} um-icon-btn`}
+                        title={isArchivedList ? 'Restore feedback' : 'Archive feedback'}
                       >
-                        {isArchivedList ? 'Restore' : 'Archive'}
+                        {isArchivedList ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                       </button>
                     )}
                     <div className="text-right">
