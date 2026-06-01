@@ -501,7 +501,7 @@ export default function PresentationViewer({ url, title, fileName, className = '
         {conversionStatus === 'failed' && !pdfUrl && (
           <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-800">
             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Browser preview may not match the original exactly.  
+            <span>Browser preview may not match the original exactly.
               <button onClick={handleDownload} className="underline font-medium">Download</button>
                to open in Microsoft PowerPoint for full fidelity.
             </span>
