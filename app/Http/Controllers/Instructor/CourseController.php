@@ -214,6 +214,7 @@ class CourseController extends Controller
         // or because the course belongs to a department/subdepartment assigned to them
         $course = Course::with([
             'instructor:id,fullname,email,profile_picture',
+            'subdepartment:id,name,department_id',
             'modules.lessons',
             'enrolledUsers:id,fullname,email,department,role,status',
         ])->find($id);

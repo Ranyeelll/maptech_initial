@@ -422,11 +422,6 @@ export function AdminLayout({
     icon: BookOpen
   },
   {
-    id: 'quiz-management',
-    label: 'Quiz Management',
-    icon: ClipboardList
-  },
-  {
     id: 'custom-field',
     label: 'Custom Field Builder',
     icon: Blocks
@@ -494,7 +489,7 @@ export function AdminLayout({
       {!isDesktop && isMobileSidebarOpen && <button type="button" aria-label="Close sidebar" className="fixed inset-0 z-20 bg-slate-950/60" onClick={() => setIsMobileSidebarOpen(false)} />}
       {/* Sidebar (fixed on all viewports to avoid layout shift when zooming) */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 flex ${sidebarWidthClass} flex-col border-r transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${sidebarTranslateClass} ${isDark ? 'border-slate-800/80 bg-slate-950/95 text-white' : 'border-slate-200 bg-white text-slate-800'}`}
+        className={`fixed inset-y-0 left-0 z-30 flex ${sidebarWidthClass} flex-col border-r overflow-y-auto transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${sidebarTranslateClass} ${isDark ? 'border-slate-800/80 bg-slate-950/95 text-white' : 'border-slate-200 bg-white text-slate-800'}`}
         onMouseEnter={() => { if (allowSidebarExpand) setIsSidebarHovered(true); }}
         onMouseLeave={() => { if (allowSidebarExpand) setIsSidebarHovered(false); }}
       >
@@ -507,7 +502,7 @@ export function AdminLayout({
             />
             {/* Company name intentionally hidden under the logo */}
           </div>
-          <div className="flex-1 flex flex-col overflow-y-auto md:overflow-y-hidden pt-3 pb-3">
+          <div className="flex-1 flex flex-col pt-3 pb-3">
             <nav className={`mt-3 flex-1 space-y-0.5 ${isSidebarCompact ? 'px-3' : 'px-2'}`}>
               {safeArray(allNavItems).map((item) => {
                 const Icon = item.icon;

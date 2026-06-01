@@ -180,6 +180,17 @@ interface ModuleDetail {
   isOpen?: boolean;
 }
 
+interface CourseQuizSummary {
+  id: number;
+  title: string;
+  description: string | null;
+  pass_percentage: number;
+  module_id: number | null;
+  lesson_id: number | null;
+  quiz_type: string | null;
+  question_count: number;
+}
+
 interface UserOption {
   id: number;
   fullName: string;
@@ -240,6 +251,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
   const editInstructorPhotoRef = useRef<HTMLInputElement>(null);
   // Module management state
   const [courseModules, setCourseModules] = useState<ModuleDetail[]>([]);
+  const [courseQuizzes, setCourseQuizzes] = useState<CourseQuizSummary[]>([]);
   const [loadingModules, setLoadingModules] = useState(false);
   const [activePanel, setActivePanel] = useState<'modules' | 'upload' | 'quiz' | 'enroll'>('modules');
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
@@ -889,6 +901,21 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
     }
   };
 
+  const loadCourseQuizzes = async (courseId: number | string) => {
+    try {
+      const res = await fetch(`/api/admin/courses/${courseId}/quizzes`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCourseQuizzes(safeArray<CourseQuizSummary>(data));
+      }
+    } catch (err) {
+      console.error('Failed to load course quizzes:', err);
+    }
+  };
+
   // ── Add Module ──
   const handleAddModule = async () => {
     if (!selectedCourse || !newModuleTitle.trim()) return;
@@ -1200,6 +1227,7 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
     setSendQuizModuleId(null);
     await Promise.all([
       loadModules(course.id),
+      loadCourseQuizzes(course.id),
       loadEnrolledStudents(course.id),
     ]);
   };
@@ -1816,40 +1844,58 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
                               )}
                               {safeArray(mod.lessons).length > 0 ? (
                                 safeArray(mod.lessons).map((lesson: any) => (
-                                  <div key={lesson.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setPreviewLesson(lesson)}>
-                                    <div className="flex items-center gap-2">
-                                      {lesson.type === 'Video' ? (
-                                        <VideoCameraIcon className="h-4 w-4 text-purple-500" />
-                                      ) : lesson.type === 'Document' ? (
-                                        <DocumentPlusIcon className="h-4 w-4 text-blue-500" />
-                                      ) : (
-                                        <DocumentPlusIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
-                                      )}
-                                      <span className="text-sm text-slate-800 dark:text-slate-100">{lesson.title}</span>
-                                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                                        lesson.status === 'Published' || lesson.status === 'published'
-                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                          : 'bg-yellow-100 text-yellow-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                      }`}>{lesson.status || 'Draft'}</span>
-                                      {lesson.duration && <span className="text-xs text-slate-400 dark:text-slate-300">• {lesson.duration}</span>}
-                                      {lesson.file_size && <span className="text-xs text-slate-400 dark:text-slate-300">• {lesson.file_size}</span>}
+                                  <div key={lesson.id} className="space-y-2">
+                                    <div className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setPreviewLesson(lesson)}>
+                                      <div className="flex items-center gap-2">
+                                        {lesson.type === 'Video' ? (
+                                          <VideoCameraIcon className="h-4 w-4 text-purple-500" />
+                                        ) : lesson.type === 'Document' ? (
+                                          <DocumentPlusIcon className="h-4 w-4 text-blue-500" />
+                                        ) : (
+                                          <DocumentPlusIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                                        )}
+                                        <span className="text-sm text-slate-800 dark:text-slate-100">{lesson.title}</span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                          lesson.status === 'Published' || lesson.status === 'published'
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                            : 'bg-yellow-100 text-yellow-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                        }`}>{lesson.status || 'Draft'}</span>
+                                        {lesson.duration && <span className="text-xs text-slate-400 dark:text-slate-300">• {lesson.duration}</span>}
+                                        {lesson.file_size && <span className="text-xs text-slate-400 dark:text-slate-300">• {lesson.file_size}</span>}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setPreviewLesson(lesson); }}
+                                          className="p-1 text-slate-400 dark:text-slate-400 hover:text-blue-600 dark:hover:text-sky-300"
+                                          title="Preview"
+                                        >
+                                          <EyeIcon className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lesson.id); }}
+                                          className="p-1 text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-rose-300"
+                                          title="Delete Lesson"
+                                        >
+                                          <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setPreviewLesson(lesson); }}
-                                        className="p-1 text-slate-400 dark:text-slate-400 hover:text-blue-600 dark:hover:text-sky-300"
-                                        title="Preview"
-                                      >
-                                        <EyeIcon className="h-4 w-4" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lesson.id); }}
-                                        className="p-1 text-slate-400 dark:text-slate-400 hover:text-red-600 dark:hover:text-rose-300"
-                                        title="Delete Lesson"
-                                      >
-                                        <TrashIcon className="h-4 w-4" />
-                                      </button>
-                                    </div>
+                                    {(() => {
+                                      const lessonQuizzes = safeArray<CourseQuizSummary>(courseQuizzes).filter((quiz) => quiz.lesson_id === lesson.id);
+                                      return lessonQuizzes.length > 0 ? (
+                                        <div className="pl-6 space-y-2">
+                                          {lessonQuizzes.map((quiz) => (
+                                            <div key={quiz.id} className="flex items-center justify-between rounded border border-blue-100 bg-blue-50 px-3 py-2 text-sm">
+                                              <div className="min-w-0">
+                                                <p className="font-medium text-slate-900 truncate">{quiz.title}</p>
+                                                <p className="text-xs text-slate-500">{quiz.question_count} question{quiz.question_count !== 1 ? 's' : ''}</p>
+                                              </div>
+                                              <span className="text-xs text-slate-500 uppercase tracking-wide">{quiz.quiz_type || 'Quiz'}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : null;
+                                    })()}
                                   </div>
                                 ))
                               ) : (

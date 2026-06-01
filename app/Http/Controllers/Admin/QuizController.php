@@ -10,6 +10,7 @@ use App\Models\Quiz;use App\Models\QuizAttempt;use App\Models\QuizQuestion;
 use App\Models\QuizOption;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class QuizController extends Controller
 {
@@ -40,7 +41,7 @@ class QuizController extends Controller
                     'module_id'          => $quiz->module_id,
                     'module_title'       => $quiz->module?->title,
                     'lesson_id'          => $quiz->lesson_id,
-                    'lesson_title'       => $quiz->lesson?->title,
+                    'quiz_type'          => $quiz->quiz_type,
                     'question_count'     => $quiz->questions->count(),
                     'created_at'         => $quiz->created_at,
                 ];
@@ -122,7 +123,7 @@ class QuizController extends Controller
                 'module_id'       => $quiz->module_id,
                 'module_title'    => $quiz->module?->title,
                 'lesson_id'       => $quiz->lesson_id,
-                'lesson_title'    => $quiz->lesson?->title,
+                'quiz_type'       => $quiz->quiz_type,
                 'question_count'  => $quiz->questions->count(),
                 'created_at'      => $quiz->created_at,
             ]);
@@ -178,27 +179,11 @@ class QuizController extends Controller
             'description'     => 'nullable|string',
             'module_id'       => 'nullable|integer|exists:modules,id',
             'lesson_id'       => 'nullable|integer|exists:lessons,id',
-            'quiz_type'       => 'nullable|in:pre-test,post-test,regular',
+            'quiz_type'       => 'nullable|string|in:pre-test,regular,post-test,final-assessment',
             'pass_percentage' => 'nullable|integer|min:1|max:100',
         ]);
 
-        if (!empty($validated['module_id'])) {
-            $selectedModule = Module::findOrFail((int) $validated['module_id']);
-            if ((string) $selectedModule->course_id !== (string) $course->id) {
-                return response()->json(['message' => 'Selected module does not belong to this course.'], 422);
-            }
-
-            if (!empty($validated['lesson_id'])) {
-                $lesson = Lesson::findOrFail((int) $validated['lesson_id']);
-                if ((int) $lesson->module_id !== (int) $selectedModule->id) {
-                    return response()->json(['message' => 'Selected lesson does not belong to the selected module.'], 422);
-                }
-            }
-        } elseif (!empty($validated['lesson_id'])) {
-            return response()->json(['message' => 'lesson_id requires module_id.'], 422);
-        }
-
-        $quiz = Quiz::create([
+        $createData = [
             'course_id'       => $courseId,
             'module_id'       => $validated['module_id'] ?? null,
             'lesson_id'       => $validated['lesson_id'] ?? null,
@@ -206,7 +191,16 @@ class QuizController extends Controller
             'title'           => $validated['title'],
             'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
-        ]);
+        ];
+
+        if (Schema::hasColumn('quizzes', 'lesson_id')) {
+            $createData['lesson_id'] = $validated['lesson_id'] ?? null;
+        }
+        if (Schema::hasColumn('quizzes', 'quiz_type')) {
+            $createData['quiz_type'] = $validated['quiz_type'] ?? 'regular';
+        }
+
+        $quiz = Quiz::create($createData);
 
         return response()->json([
             'id'              => $quiz->id,
@@ -217,6 +211,7 @@ class QuizController extends Controller
             'course_id'       => $quiz->course_id,
             'module_id'       => $quiz->module_id,
             'lesson_id'       => $quiz->lesson_id,
+            'quiz_type'       => $quiz->quiz_type,
             'question_count'  => 0,
             'created_at'      => $quiz->created_at,
         ], 201);
@@ -234,22 +229,16 @@ class QuizController extends Controller
             }
         }
 
+
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
             'description'     => 'nullable|string',
             'lesson_id'       => 'nullable|integer|exists:lessons,id',
-            'quiz_type'       => 'nullable|in:pre-test,post-test,regular',
+            'quiz_type'       => 'nullable|string|in:pre-test,regular,post-test,final-assessment',
             'pass_percentage' => 'nullable|integer|min:1|max:100',
         ]);
 
-        if (!empty($validated['lesson_id'])) {
-            $lesson = Lesson::findOrFail((int) $validated['lesson_id']);
-            if ((int) $lesson->module_id !== (int) $moduleId) {
-                return response()->json(['message' => 'Selected lesson does not belong to this module.'], 422);
-            }
-        }
-
-        $quiz = Quiz::create([
+        $createData = [
             'course_id'       => $module->course_id,
             'module_id'       => $moduleId,
             'lesson_id'       => $validated['lesson_id'] ?? null,
@@ -257,7 +246,16 @@ class QuizController extends Controller
             'title'           => $validated['title'],
             'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
-        ]);
+        ];
+
+        if (Schema::hasColumn('quizzes', 'lesson_id')) {
+            $createData['lesson_id'] = $validated['lesson_id'] ?? null;
+        }
+        if (Schema::hasColumn('quizzes', 'quiz_type')) {
+            $createData['quiz_type'] = $validated['quiz_type'] ?? 'regular';
+        }
+
+        $quiz = Quiz::create($createData);
 
         return response()->json([
             'id'              => $quiz->id,
@@ -268,6 +266,7 @@ class QuizController extends Controller
             'course_id'       => $quiz->course_id,
             'module_id'       => $quiz->module_id,
             'lesson_id'       => $quiz->lesson_id,
+            'quiz_type'       => $quiz->quiz_type,
             'question_count'  => 0,
             'created_at'      => $quiz->created_at,
         ], 201);
@@ -315,12 +314,22 @@ class QuizController extends Controller
         }
 
         $validated = $request->validate([
-            'title'           => 'required|string|max:255',
-            'description'     => 'nullable|string',
-            'pass_percentage' => 'nullable|integer|min:1|max:100',
+            'title'           => 'sometimes|required|string|max:255',
+            'description'     => 'sometimes|nullable|string',
+            'pass_percentage' => 'sometimes|nullable|integer|min:1|max:100',
+            'lesson_id'       => 'sometimes|nullable|integer|exists:lessons,id',
+            'quiz_type'       => 'sometimes|nullable|string|in:pre-test,regular,post-test,final-assessment',
         ]);
 
-        $quiz->update($validated);
+        $updateData = $validated;
+        if (!Schema::hasColumn('quizzes', 'lesson_id')) {
+            unset($updateData['lesson_id']);
+        }
+        if (!Schema::hasColumn('quizzes', 'quiz_type')) {
+            unset($updateData['quiz_type']);
+        }
+
+        $quiz->update($updateData);
 
         return response()->json(['message' => 'Quiz updated.', 'quiz' => $quiz]);
     }
