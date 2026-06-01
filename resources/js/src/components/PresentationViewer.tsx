@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { init as initPptxPreview } from 'pptx-preview';
 import PDFViewer from './PDFViewer';
 import {
@@ -355,8 +356,8 @@ export default function PresentationViewer({ url, title, fileName, className = '
 
   // ─── PRESENTATION MODE ───
   if (isPresentationMode) {
-    return (
-      <div ref={containerRef} className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4" onMouseMove={handleMouseMove} onMouseLeave={() => setShowPointer(false)}>
+    return createPortal(
+      <div ref={containerRef} className="fixed inset-0 bg-slate-950 flex items-center justify-center p-4" style={{ zIndex: 9999 }} onMouseMove={handleMouseMove} onMouseLeave={() => setShowPointer(false)}>
         <div className="relative w-full max-w-[1400px] h-[90vh] bg-slate-950 rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col">
           <div className={`absolute top-0 inset-x-0 z-20 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
@@ -415,7 +416,8 @@ export default function PresentationViewer({ url, title, fileName, className = '
             </div>
           )}
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
