@@ -954,7 +954,7 @@ $module = $course->modules()->create($data);
             return response()->json(['message' => 'Enrollment not found'], 404);
         }
 
-        $enrollment->update(['locked' => true]);
+        $enrollment->update(['locked' => true, 'unlocked_until' => null]);
 
         return response()->json(['message' => 'Enrollment locked']);
     }
@@ -967,6 +967,7 @@ $module = $course->modules()->create($data);
         $request->validate([
             'duration_minutes' => 'nullable|integer|min:1',
             'expires_at' => 'nullable|date',
+            'permanent' => 'nullable|boolean',
         ]);
         $user = $request->user();
         $course = Course::findOrFail($courseId);
@@ -996,10 +997,16 @@ $module = $course->modules()->create($data);
             $until = \Carbon\Carbon::parse($request->input('expires_at'))->setTimezone('UTC');
         }
 
-        $data = ['locked' => false];
-        if ($until) $data['unlocked_until'] = $until;
+        if ($request->boolean('permanent') && !$until) {
+            // Persist a far-future timestamp so employee-side lock logic can
+            // reliably detect a manual permanent unlock.
+            $until = now()->addYears(100);
+        }
 
-        $enrollment->update($data);
+        $enrollment->update([
+            'locked' => false,
+            'unlocked_until' => $until,
+        ]);
 
         // Broadcast to the user so their UI can refresh in realtime
         try {

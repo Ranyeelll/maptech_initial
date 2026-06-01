@@ -610,6 +610,8 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
       const bodyData: Record<string, unknown> = {};
       if (!unlockPermanent) {
         bodyData.expires_at = toUtcIsoFromManilaInput(unlockUntil) ?? undefined;
+      } else {
+        bodyData.permanent = true;
       }
 
       const r = await fetch(`${API_BASE}/instructor/courses/${courseUnlockTarget.id}/enrollments/${selectedUnlockEmployeeId}/unlock`, {

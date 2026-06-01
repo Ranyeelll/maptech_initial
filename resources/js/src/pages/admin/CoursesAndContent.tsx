@@ -826,6 +826,8 @@ export function CoursesAndContent({ onNavigate }: { onNavigate?: (page: string, 
       const payload: Record<string, unknown> = {};
       if (!unlockPermanent) {
         payload.expires_at = toUtcIsoFromManilaInput(unlockUntil) ?? undefined;
+      } else {
+        payload.permanent = true;
       }
 
       const response = await fetch(`/api/admin/courses/${courseUnlockTarget.id}/enrollments/${selectedUnlockEmployeeId}/unlock`, {

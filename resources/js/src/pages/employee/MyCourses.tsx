@@ -27,6 +27,7 @@ interface Course {
   deadline?: string | null;
   locked?: boolean;
   has_manual_unlock?: boolean;
+  has_enrollment_unlock?: boolean;
 }
 
 interface Department {
@@ -94,6 +95,7 @@ export function MyCourses({ onNavigate, globalSearch = '' }: MyCoursesProps) {
     deadline: c.deadline ?? null,
     locked: c.locked ?? false,
     has_manual_unlock: c.has_manual_unlock ?? false,
+    has_enrollment_unlock: c.has_enrollment_unlock ?? false,
   });
 
   const loadMyCourses = async () => {
@@ -165,7 +167,7 @@ export function MyCourses({ onNavigate, globalSearch = '' }: MyCoursesProps) {
     const notStartedYet = course.start_date && new Date(course.start_date) > new Date();
     // If the course is expired but instructor manually unlocked modules
     // for this employee, treat it as unlocked for expiry purposes.
-    const isLockedByExpiry = isExpired && !course.has_manual_unlock;
+    const isLockedByExpiry = isExpired && !course.has_manual_unlock && !course.has_enrollment_unlock;
     // Final locked state combines server-side locked flag, deadline lock,
     // and not-started-yet state.
     const isLocked = (course.locked ?? false) || isLockedByExpiry || !!notStartedYet;
