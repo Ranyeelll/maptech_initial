@@ -641,6 +641,7 @@ export function NotificationManagement() {
       return;
     }
 
+
     showConfirm('Send this announcement now?', async () => {
       setIsSending(true);
       try {
@@ -677,29 +678,29 @@ export function NotificationManagement() {
 
         const data = await res.json();
 
-      if (res.ok) {
-        pushToast('Sent Successfully', `Notification sent to ${data.recipients_count} recipient${data.recipients_count !== 1 ? 's' : ''}!`, 'success');
-        setIsModalOpen(false);
-        setFormData({ title: '', message: '', roles: [], course_id: '', target_user_ids: [] });
-        setSelectedUsers([]);
-        setSelectedDepartment('');
-        setSelectedSubdepartment('');
-        setAnnouncementImages([]);
-        setAdminRecipientMode('employees');
+        if (res.ok) {
+          pushToast('Sent Successfully', `Notification sent to ${data.recipients_count} recipient${data.recipients_count !== 1 ? 's' : ''}!`, 'success');
+          setIsModalOpen(false);
+          setFormData({ title: '', message: '', roles: [], course_id: '', target_user_ids: [] });
+          setSelectedUsers([]);
+          setSelectedDepartment('');
+          setSelectedSubdepartment('');
+          setAnnouncementImages([]);
+          setAdminRecipientMode('employees');
 
-        // Refresh sent history from server
-        fetchSentAnnouncements();
-      } else {
-        const msg = data?.message || `Failed to send announcement (status ${res.status})`;
-        alert(msg);
+          // Refresh sent history from server
+          fetchSentAnnouncements();
+        } else {
+          const msg = data?.message || `Failed to send announcement (status ${res.status})`;
+          alert(msg);
+        }
+      } catch (err) {
+        console.error('Failed to send announcement:', err);
+        alert('Failed to send announcement');
+      } finally {
+        setIsSending(false);
       }
-    } catch (err) {
-      console.error('Failed to send announcement:', err);
-      alert('Failed to send announcement');
-    } finally {
-      setIsSending(false);
-    }
-  };
+    });
 
   const handlePreview = async () => {
     const rolesArray = adminRecipientMode === 'everyone'
@@ -2071,6 +2072,9 @@ export function NotificationManagement() {
       />
 
 
+
     </div>
   );
 }
+
+export default NotificationManagement;

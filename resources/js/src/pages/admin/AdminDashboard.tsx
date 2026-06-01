@@ -28,10 +28,7 @@ import {
   Legend,
 } from 'recharts';
 import { LoadingState } from '../../components/ui/LoadingState';
-import { statIconContainerClasses, statIconGlyphClasses } from '../../utils/uiPalette';
-
-const ANALYTICS_COLORS = ['#34b46c', '#c8a73a', '#7f90ab'];
-const POPULAR_COURSE_COLORS = ['#2ea85f', '#3abf6f', '#60ca88'];
+import { statIconContainerClasses, statIconGlyphClasses, chartColors, popularCourseColors } from '../../utils/uiPalette';
 const CHART_CARD_CLASS = 'rounded-xl border border-slate-200/70 bg-white/95 p-6 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/70';
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_NAME_TO_INDEX: Record<string, number> = {
@@ -536,7 +533,7 @@ export function AdminDashboard({ onNavigate }: Props) {
     if (!active || !payload || payload.length === 0) return null;
 
     const value = Number(payload[0]?.value ?? 0);
-    const color = payload[0]?.color ?? POPULAR_COURSE_COLORS[0];
+    const color = payload[0]?.color ?? popularCourseColors[0];
 
     return (
       <div className={chartTooltipClass}>
@@ -712,7 +709,7 @@ export function AdminDashboard({ onNavigate }: Props) {
                       strokeWidth={2}
                       dataKey="value">
                       {completionStatus.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={ANALYTICS_COLORS[index % ANALYTICS_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -810,7 +807,7 @@ export function AdminDashboard({ onNavigate }: Props) {
                   }}
                 >
                   {popularCourses.map((_, i) => (
-                    <Cell key={i} fill={POPULAR_COURSE_COLORS[i % POPULAR_COURSE_COLORS.length]} />
+                    <Cell key={i} fill={popularCourseColors[i % popularCourseColors.length]} />
                   ))}
                 </Bar>
               </BarChart>

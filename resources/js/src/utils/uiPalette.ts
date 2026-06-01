@@ -22,3 +22,8 @@ export const statIconGlyphClasses = {
   orange: 'h-6 w-6 text-orange-600 dark:text-orange-400',
   yellow: 'h-6 w-6 text-yellow-600 dark:text-yellow-400',
 } as const;
+
+
+// Centralized chart color palettes for both admin and employee dashboards
+export const chartColors = ['#34b46c', '#c8a73a', '#7f90ab'];
+export const popularCourseColors = ['#2ea85f', '#3abf6f', '#60ca88'];

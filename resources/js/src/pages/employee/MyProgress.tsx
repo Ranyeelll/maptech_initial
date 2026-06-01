@@ -12,10 +12,10 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { Clock, Award, CheckCircle, Loader } from 'lucide-react';
-import { actionButtonClasses } from '../../utils/uiPalette';
+
+import { actionButtonClasses, chartColors, popularCourseColors } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
-const COLORS = ['#22c55e', '#eab308', '#94a3b8'];
 
 interface ProgressData {
   summary: {
@@ -140,7 +140,7 @@ export function MyProgress() {
                       dataKey="value"
                     >
                       {course_status.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(val: number) => [val, 'Courses']} />
@@ -150,7 +150,7 @@ export function MyProgress() {
               <div className="flex justify-center gap-4 mt-4">
                 {course_status.map((entry, index) => (
                   <div key={entry.name} className="flex items-center text-sm text-slate-600">
-                    <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: COLORS[index] }} />
+                    <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: chartColors[index] }} />
                     {entry.name} ({entry.value})
                   </div>
                 ))}
@@ -168,12 +168,17 @@ export function MyProgress() {
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Weekly Learning Activity</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weekly_activity}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+
+              <BarChart data={weekly_activity} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip formatter={(val: number) => [val, 'Activity']} />
-                <Bar dataKey="count" fill="#22c55e" radius={[4, 4, 0, 0]} name="Activity" />
+                <Tooltip formatter={(val: number) => [val, 'Activity']} cursor={{ fill: 'rgba(46, 168, 95, 0.08)' }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Activity">
+                  {weekly_activity.map((_, index) => (
+                    <Cell key={index} fill={popularCourseColors[index % popularCourseColors.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
