@@ -540,10 +540,13 @@ export function AdminLayout({
               <div className="flex items-center gap-3">
                 <button
                   onClick={onLogout}
-                  className={`flex-shrink-0 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} transition-colors duration-300`}
+                  className={`flex w-full min-w-0 items-center gap-3 ${isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors duration-300`}
                   title="Logout"
                 >
                   <LogOut className="h-5 w-5" />
+                  <span className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {displayName ?? 'Admin'}
+                  </span>
                   <span className="sr-only">Sign out</span>
                 </button>
               </div>

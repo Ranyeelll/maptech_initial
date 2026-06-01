@@ -88,11 +88,10 @@ interface QuizSummary {
   id: number;
   title: string;
   description: string | null;
-  quiz_type?: 'pre-test' | 'post-test' | 'regular';
+  quiz_type?: 'pre-test' | 'post-test' | 'regular' | 'final-assessment' | null;
   pass_percentage: number;
   module_id: number | null;
   lesson_id: number | null;
-  quiz_type: string | null;
   question_count: number;
   created_at: string;
 }
@@ -483,7 +482,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
   const editLessonFileRef = useRef<HTMLInputElement>(null);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'modules' | 'students'>('modules');
+  const [activeTab, setActiveTab] = useState<'modules' | 'quizzes' | 'students'>('modules');
   const [highlightUserName, setHighlightUserName] = useState<string | null>(null);
 
   // Enrollment state
@@ -1703,7 +1702,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
 
                     {quizzesLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin text-slate-400 flex-shrink-0" />
-                    ) : quiz ? (
+                    ) : hasQuiz ? (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium flex-shrink-0">
                         <HelpCircle className="h-3.5 w-3.5" />
                         {quizzes.length} Quiz{quizzes.length !== 1 ? 'zes' : ''}

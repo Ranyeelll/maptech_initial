@@ -70,12 +70,16 @@ function extractNotificationItems(payload: any): NotificationItem[] {
 }
 
 export function NotificationBell({ role, onOpenAll, className = '' }: NotificationBellProps) {
+  const MAX_LAYER_Z = 2147483647;
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [banner, setBanner] = useState<NotificationItem | null>(null);
+  const [dropdownTop, setDropdownTop] = useState<number>(56);
+  const [dropdownRight, setDropdownRight] = useState<number>(16);
   const [loading, setLoading] = useState(false);
   const [marking, setMarking] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const isCancelledRef = useRef(false);
   const fetchingRecentRef = useRef(false);
   const latestNotificationIdRef = useRef<number | null>(null);
@@ -312,15 +316,36 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
   const hasUnread = unreadCount > 0;
   const displayCount = unreadCount > 9 ? '9+' : unreadCount.toString();
 
+  const updateDropdownPosition = useCallback(() => {
+    if (!triggerRef.current || typeof window === 'undefined') return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownTop(Math.round(rect.bottom + 8));
+    setDropdownRight(Math.max(8, Math.round(window.innerWidth - rect.right)));
+  }, []);
+
   const toggleOpen = () => {
     const nextOpen = !open;
     setOpen(nextOpen);
     // Refresh data when opening dropdown to ensure count is up-to-date
     if (nextOpen) {
+      updateDropdownPosition();
       fetchUnread();
       fetchRecent({ silent: true });
     }
   };
+
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+    const syncPosition = () => updateDropdownPosition();
+
+    window.addEventListener('resize', syncPosition);
+    window.addEventListener('scroll', syncPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', syncPosition);
+      window.removeEventListener('scroll', syncPosition, true);
+    };
+  }, [open, updateDropdownPosition]);
 
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0 || marking) return;
@@ -434,7 +459,8 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
         <div
           role="alert"
           aria-live="polite"
-          className="fixed right-4 top-20 z-[9999] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-2xl dark:border-emerald-700 dark:bg-slate-900"
+          className="fixed right-4 top-20 z-[10400] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-2xl dark:border-emerald-700 dark:bg-slate-900"
+          style={{ zIndex: MAX_LAYER_Z }}
         >
           <div className="flex items-start gap-3 p-4">
             {banner.data?.from_user_profile_picture ? (
@@ -473,9 +499,10 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
       )}
 
       <button
+        ref={triggerRef}
         type="button"
         onClick={toggleOpen}
-        className="relative bg-white dark:bg-slate-800 p-1 rounded-full text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+        className="relative z-[2147483647] bg-white dark:bg-slate-800 p-1 rounded-full text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
       >
         <span className="sr-only">View notifications</span>
         <Bell className="h-6 w-6" />
@@ -486,8 +513,11 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-[22rem] sm:w-96 rounded-xl shadow-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 z-50 overflow-hidden">
+      {open && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed w-[min(22rem,calc(100vw-2rem))] sm:w-96 rounded-xl shadow-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 overflow-hidden"
+          style={{ top: dropdownTop, right: dropdownRight, zIndex: MAX_LAYER_Z }}
+        >
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{prefixLabel} Notifications</p>
@@ -582,7 +612,8 @@ export function NotificationBell({ role, onOpenAll, className = '' }: Notificati
               View all
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
