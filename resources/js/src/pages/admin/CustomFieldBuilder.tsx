@@ -22,8 +22,11 @@ import {
   Folder as FolderIcon,
   Eye as EyeIcon,
 } from 'lucide-react';
-import { NoCodePageBuilder } from '../../components/admin-dashboard/custom-builder/NoCodePageBuilder';
+import { NoCodePageBuilder, iconChoices } from '../../components/admin-dashboard/custom-builder/NoCodePageBuilder';
 import { createDefaultBuilderConfig, normalizeBuilderConfig } from '../../components/admin-dashboard/custom-builder/builderSchema';
+
+// Icons available for sidebar navigation (subset of iconChoices, readable name labels)
+const iconChoicesForSidebar = iconChoices;
 
 // Types
 interface CustomLesson {
@@ -1261,8 +1264,8 @@ export function CustomFieldBuilder({ onNavigate, initialExpandedModuleId }: Cust
 
       {/* Module Modal */}
       {showModuleModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full mx-auto max-h-[90vh] overflow-y-auto ${moduleForm.module_type === 'ui_component' ? 'max-w-5xl' : 'max-w-lg'}`}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -1301,35 +1304,35 @@ export function CustomFieldBuilder({ onNavigate, initialExpandedModuleId }: Cust
                   </div>
                 )}
 
-                {/* Icon Name */}
+                {/* Icon Name — visual picker */}
                 {moduleForm.module_type === 'ui_component' && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Icon Name *
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Sidebar Icon *
                     </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={moduleForm.icon_name}
-                        onChange={(e) => setModuleForm((prev) => ({ ...prev, icon_name: e.target.value }))}
-                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500"
-                        placeholder="e.g., Cake, Gift, Calendar, Bell"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const suggested = suggestIconFromTitle(moduleForm.title);
-                          setModuleForm((prev) => ({ ...prev, icon_name: suggested }));
-                        }}
-                        className="px-3 py-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium transition-colors"
-                        title="Auto-suggest icon from title"
-                      >
-                        Auto
-                      </button>
+                    <div className="grid grid-cols-8 gap-1.5 p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/40">
+                      {iconChoicesForSidebar.map((choice) => (
+                        <button
+                          key={choice.name}
+                          type="button"
+                          title={choice.name}
+                          onClick={() => setModuleForm((prev) => ({ ...prev, icon_name: choice.name }))}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+                            moduleForm.icon_name === choice.name
+                              ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 ring-2 ring-purple-400'
+                              : 'hover:bg-white dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          <choice.Icon className="h-5 w-5" />
+                          <span className="text-[9px] leading-tight text-center truncate w-full">{choice.name}</span>
+                        </button>
+                      ))}
                     </div>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Click "Auto" to suggest an icon based on the title, or enter manually (e.g., Cake, Gift, Calendar)
-                    </p>
+                    {moduleForm.icon_name && (
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Selected: <span className="font-medium text-purple-600 dark:text-purple-400">{moduleForm.icon_name}</span>
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -1361,6 +1364,7 @@ export function CustomFieldBuilder({ onNavigate, initialExpandedModuleId }: Cust
                           component_config: nextConfig,
                         }));
                       }}
+                      sidebarIconName={moduleForm.icon_name}
                     />
                   </div>
                 )}

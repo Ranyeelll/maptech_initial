@@ -1,12 +1,14 @@
 export type BuilderElementType = 'text' | 'button' | 'icon_button';
 
+export type BuilderButtonStyle = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning' | 'info' | 'success' | 'link';
+
 export interface BuilderElement {
   id: string;
   type: BuilderElementType;
   text?: string;
   label?: string;
   url?: string;
-  style?: 'primary' | 'secondary' | 'ghost';
+  style?: BuilderButtonStyle;
   icon?: string;
   align?: 'left' | 'center' | 'right';
 }
@@ -20,12 +22,17 @@ export interface BuilderConfig {
   elements: BuilderElement[];
 }
 
-export const STANDARD_BUTTON_SIZE = 'h-10 min-w-[160px] px-4 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors';
+export const STANDARD_BUTTON_SIZE = 'h-10 min-w-[120px] px-4 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors';
 
-export const BUTTON_VARIANTS: Record<'primary' | 'secondary' | 'ghost', string> = {
+export const BUTTON_VARIANTS: Record<BuilderButtonStyle, string> = {
   primary: 'bg-green-600 hover:bg-green-700 text-white',
   secondary: 'border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700',
   ghost: 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700',
+  danger: 'bg-red-600 hover:bg-red-700 text-white',
+  warning: 'bg-amber-500 hover:bg-amber-600 text-white',
+  info: 'bg-blue-600 hover:bg-blue-700 text-white',
+  success: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+  link: 'text-blue-600 hover:text-blue-700 underline bg-transparent min-w-0',
 };
 
 const makeId = () => `el-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -72,7 +79,7 @@ export const normalizeBuilderConfig = (
         text: typeof el.text === 'string' ? el.text : '',
         label: typeof el.label === 'string' ? el.label : '',
         url: typeof el.url === 'string' ? el.url : '',
-        style: (el.style || 'primary') as 'primary' | 'secondary' | 'ghost',
+        style: (el.style || 'primary') as BuilderButtonStyle,
         icon: typeof el.icon === 'string' ? el.icon : 'Plus',
         align: (el.align || 'left') as 'left' | 'center' | 'right',
       })),
@@ -87,7 +94,7 @@ export const normalizeBuilderConfig = (
         type: 'button' as const,
         label: String(btn.label || 'Action'),
         url: String(btn.url || ''),
-        style: (btn.style || 'primary') as 'primary' | 'secondary' | 'ghost',
+        style: (btn.style || 'primary') as BuilderButtonStyle,
         align: 'left' as const,
       }));
 
