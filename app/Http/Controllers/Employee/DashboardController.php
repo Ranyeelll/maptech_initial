@@ -163,21 +163,24 @@ class DashboardController extends Controller
 
         $coursesWithProgress = $courses->map(function (Course $course) use ($enrollments, $manuallyUnlockedCourseIds) {
             $enrollment = $enrollments->get($course->id);
-            $locked = (bool) ($enrollment->locked ?? false);
+            $locked     = (bool) ($enrollment->locked ?? false);
+            $hasManualUnlock = isset($manuallyUnlockedCourseIds[$course->id]);
+            $hasEnrollmentUnlock = (bool) ($enrollment?->unlocked_until && Carbon::parse($enrollment->unlocked_until)->isFuture());
 
-            // If at least one module is manually unlocked for this user
-            // on this course, treat it as unlocked on the dashboard.
-            if ($locked && isset($manuallyUnlockedCourseIds[$course->id])) {
+            // Treat either a manual module unlock OR an active enrollment unlock
+            // as an explicit override for server-side locked state.
+            if ($locked && ($hasManualUnlock || $hasEnrollmentUnlock)) {
                 $locked = false;
             }
 
             return array_merge($course->toArray(), [
-                'progress' => $enrollment?->progress ?? 0,
-                'enroll_status' => $enrollment?->status ?? null,
-                'last_activity' => $enrollment?->updated_at?->toISOString() ?? null,
-                'locked' => $locked,
-                'has_manual_unlock' => isset($manuallyUnlockedCourseIds[$course->id]),
-                'is_enrolled' => (bool) $enrollment,
+                'progress'       => $enrollment?->progress ?? 0,
+                'enroll_status'  => $enrollment?->status ?? null,
+                'last_activity'  => $enrollment?->updated_at?->toISOString() ?? null,
+                'locked'         => $locked,
+                'has_manual_unlock' => $hasManualUnlock,
+                'has_enrollment_unlock' => $hasEnrollmentUnlock,
+                'is_enrolled'    => (bool) $enrollment,
             ]);
         });
 
@@ -232,9 +235,11 @@ class DashboardController extends Controller
 
         $result = $courses->map(function (Course $course) use ($enrollments, $manuallyUnlockedCourseIds) {
             $enrollment = $enrollments->get($course->id);
-            $locked = (bool) ($enrollment->locked ?? false);
+            $locked     = (bool) ($enrollment->locked ?? false);
+            $hasManualUnlock = isset($manuallyUnlockedCourseIds[$course->id]);
+            $hasEnrollmentUnlock = (bool) ($enrollment?->unlocked_until && Carbon::parse($enrollment->unlocked_until)->isFuture());
 
-            if ($locked && isset($manuallyUnlockedCourseIds[$course->id])) {
+            if ($locked && ($hasManualUnlock || $hasEnrollmentUnlock)) {
                 $locked = false;
             }
 
@@ -246,12 +251,13 @@ class DashboardController extends Controller
                 'status' => $course->status,
                 'deadline' => $course->deadline?->toISOString(),
                 'modules_count' => $course->modules->count(),
-                'instructor' => $course->instructor?->fullname,
-                'is_enrolled' => (bool) $enrollment,
-                'my_progress' => $enrollment?->progress ?? 0,
-                'my_status' => $enrollment ? $this->resolveStatus($enrollment, $course) : null,
-                'locked' => $locked,
-                'has_manual_unlock' => isset($manuallyUnlockedCourseIds[$course->id]),
+                'instructor'    => $course->instructor?->fullname,
+                'is_enrolled'   => (bool) $enrollment,
+                'my_progress'   => $enrollment?->progress ?? 0,
+                'my_status'     => $enrollment ? $this->resolveStatus($enrollment, $course) : null,
+                'locked'        => $locked,
+                'has_manual_unlock' => $hasManualUnlock,
+                'has_enrollment_unlock' => $hasEnrollmentUnlock,
             ];
         });
 
@@ -286,27 +292,29 @@ class DashboardController extends Controller
         $result = $enrollments->map(function (Enrollment $enrollment) use ($manuallyUnlockedCourseIds) {
             $course = $enrollment->course;
             $locked = (bool) ($enrollment->locked ?? false);
+            $hasManualUnlock = isset($manuallyUnlockedCourseIds[$course->id]);
+            $hasEnrollmentUnlock = (bool) ($enrollment->unlocked_until && Carbon::parse($enrollment->unlocked_until)->isFuture());
 
-            // If instructor has manually unlocked any module in this course
-            // for this employee (including department-wide unlocks), treat
-            // the course as unlocked in the "My Courses" list so it can be opened.
-            if ($locked && isset($manuallyUnlockedCourseIds[$course->id])) {
+            // If instructor/admin has manually unlocked this enrollment or any module
+            // for this employee, treat the course as unlocked in "My Courses".
+            if ($locked && ($hasManualUnlock || $hasEnrollmentUnlock)) {
                 $locked = false;
             }
 
             return [
-                'id' => $course->id,
-                'title' => $course->title,
-                'description' => $course->description,
-                'department' => $course->department,
-                'deadline' => $course->deadline?->toISOString(),
-                'modules_count' => $course->modules->count(),
-                'instructor' => $course->instructor?->fullname,
-                'progress' => $enrollment->progress,
-                'status' => $this->resolveStatus($enrollment, $course),
-                'enrolled_at' => $enrollment->enrolled_at,
-                'locked' => $locked,
-                'has_manual_unlock' => isset($manuallyUnlockedCourseIds[$course->id]),
+                'id'           => $course->id,
+                'title'        => $course->title,
+                'description'  => $course->description,
+                'department'   => $course->department,
+                'deadline'     => $course->deadline?->toISOString(),
+                'modules_count'=> $course->modules->count(),
+                'instructor'   => $course->instructor?->fullname,
+                'progress'     => $enrollment->progress,
+                'status'       => $this->resolveStatus($enrollment, $course),
+                'enrolled_at'  => $enrollment->enrolled_at,
+                'locked'       => $locked,
+                'has_manual_unlock' => $hasManualUnlock,
+                'has_enrollment_unlock' => $hasEnrollmentUnlock,
             ];
         })->values();
 

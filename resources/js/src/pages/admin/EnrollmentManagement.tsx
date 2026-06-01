@@ -720,10 +720,10 @@ export function EnrollmentManagement() {
                         status === 'In Progress' ? 'bg-yellow-100 text-yellow-800 dark:bg-amber-500/20 dark:text-amber-300' :
                         'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
                       }`}>
-                      {status === 'Completed' && <CheckCircle className="h-3 w-3 mr-1" />}
-                      {status === 'In Progress' && <Clock className="h-3 w-3 mr-1" />}
-                      {status === 'Not Started' && <AlertCircle className="h-3 w-3 mr-1" />}
-                      {status}
+                      {status === 'Completed' && <span className="absolute left-2 top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center"><CheckCircle className="h-3.5 w-3.5" /></span>}
+                      {status === 'In Progress' && <span className="absolute left-2 top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center"><Clock className="h-3.5 w-3.5" /></span>}
+                      {status === 'Not Started' && <span className="absolute left-2 top-1/2 inline-flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center"><AlertCircle className="h-3.5 w-3.5" /></span>}
+                      <span className="leading-none">{status}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">

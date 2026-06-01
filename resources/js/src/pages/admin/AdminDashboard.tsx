@@ -28,9 +28,7 @@ import {
   Legend,
 } from 'recharts';
 import { LoadingState } from '../../components/ui/LoadingState';
-
-const ANALYTICS_COLORS = ['#34b46c', '#c8a73a', '#7f90ab'];
-const POPULAR_COURSE_COLORS = ['#2ea85f', '#3abf6f', '#60ca88'];
+import { statIconContainerClasses, statIconGlyphClasses, chartColors, popularCourseColors } from '../../utils/uiPalette';
 const CHART_CARD_CLASS = 'rounded-xl border border-slate-200/70 bg-white/95 p-6 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/70';
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_NAME_TO_INDEX: Record<string, number> = {
@@ -535,7 +533,7 @@ export function AdminDashboard({ onNavigate }: Props) {
     if (!active || !payload || payload.length === 0) return null;
 
     const value = Number(payload[0]?.value ?? 0);
-    const color = payload[0]?.color ?? POPULAR_COURSE_COLORS[0];
+    const color = payload[0]?.color ?? popularCourseColors[0];
 
     return (
       <div className={chartTooltipClass}>
@@ -575,8 +573,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : stats?.total_employees ?? 0}
               </p>
             </div>
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-full">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className={statIconContainerClasses.blue}>
+              <Users className={statIconGlyphClasses.blue} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -600,8 +598,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : stats?.active_courses ?? 0}
               </p>
             </div>
-            <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-full">
-              <BookOpen className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className={statIconContainerClasses.green}>
+              <BookOpen className={statIconGlyphClasses.green} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -623,8 +621,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : `${stats?.completion_rate ?? 0}%`}
               </p>
             </div>
-            <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-full">
-              <Award className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <div className={statIconContainerClasses.purple}>
+              <Award className={statIconGlyphClasses.purple} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -646,8 +644,8 @@ export function AdminDashboard({ onNavigate }: Props) {
                 {loading ? '—' : `${stats?.avg_quiz_score ?? 0}%`}
               </p>
             </div>
-            <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-full">
-              <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            <div className={statIconContainerClasses.orange}>
+              <TrendingUp className={statIconGlyphClasses.orange} />
             </div>
           </div>
           <div className="mt-4 flex items-center text-sm">
@@ -711,7 +709,7 @@ export function AdminDashboard({ onNavigate }: Props) {
                       strokeWidth={2}
                       dataKey="value">
                       {completionStatus.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={ANALYTICS_COLORS[index % ANALYTICS_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -740,14 +738,6 @@ export function AdminDashboard({ onNavigate }: Props) {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={fullYearMonthlyTrends} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                  <defs>
-                    <marker id="trend-arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth">
-                      <path d="M 0 0 L 8 4 L 0 8 z" fill="#2db768" />
-                    </marker>
-                    <marker id="trend-arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="strokeWidth">
-                      <path d="M 0 0 L 8 4 L 0 8 z" fill="#5b8def" />
-                    </marker>
-                  </defs>
                   <CartesianGrid strokeDasharray="2 6" vertical={false} stroke={chartGridColor} />
                   <XAxis
                     dataKey="name"
@@ -817,7 +807,7 @@ export function AdminDashboard({ onNavigate }: Props) {
                   }}
                 >
                   {popularCourses.map((_, i) => (
-                    <Cell key={i} fill={POPULAR_COURSE_COLORS[i % POPULAR_COURSE_COLORS.length]} />
+                    <Cell key={i} fill={popularCourseColors[i % popularCourseColors.length]} />
                   ))}
                 </Bar>
               </BarChart>

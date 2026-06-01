@@ -265,6 +265,7 @@ const getAdminPageTitle = (page: string) => {
     'audit-logs': 'Audit Logs',
     'business-details': 'Business Details',
     feedbacks: 'Feedbacks',
+    archives: 'Archives',
     'product-logos': 'Product Logo Manager',
     'custom-field': 'Custom Field Builder',
     settings: 'Settings',
@@ -288,6 +289,7 @@ const getAdminPageDescription = (page: string) => {
     'audit-logs': 'Review system actions and user activity trails.',
     'business-details': 'Configure company profile and organization details.',
     feedbacks: 'Review user feedback and improve learning experience.',
+    archives: 'Review and restore archived users and feedback entries.',
     'product-logos': 'Manage product logos and branding assets.',
     'custom-field': 'Create and maintain custom fields and modules.',
     settings: 'Update account preferences and profile settings.',
@@ -447,6 +449,11 @@ export function AdminLayout({
     icon: Star
   },
   {
+    id: 'archives',
+    label: 'Archives',
+    icon: Archive
+  },
+  {
     id: 'notifications',
     label: 'Notifications',
     icon: Bell
@@ -474,14 +481,14 @@ export function AdminLayout({
 
   // Merge custom UI component modules into navigation
   const allNavItems = [
-    ...navItems.slice(0, 6), // Dashboard to Custom Field Builder
+    ...navItems.slice(0, 6), // Dashboard to Q&A
     ...customNavItems.map((item: any) => ({
       id: item.route_path,
       label: item.title,
       icon: getIconByName(item.icon_name),
       isCustom: true,
     })),
-    ...navItems.slice(6), // Rest of the items (Q&A onwards)
+    ...navItems.slice(6), // Rest of the items (Enrollments onwards)
   ];
 
   return (
@@ -519,7 +526,7 @@ export function AdminLayout({
                       className={`h-5 w-5 flex-shrink-0 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isSidebarCompact ? 'mx-auto' : 'mr-3'} ${isActive ? (isDark ? 'text-blue-300' : 'text-white') : isDark ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-900'}`} />
 
                     <span
-                      className={`overflow-hidden whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${isSidebarCompact ? 'max-w-0 opacity-0 -translate-x-2' : 'max-w-[170px] opacity-100 translate-x-0'}`}
+                      className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity,transform] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSidebarCompact ? 'max-w-0 opacity-0 -translate-x-2' : 'max-w-[170px] opacity-100 translate-x-0'}`}
                     >
                       {item.label}
                     </span>
@@ -533,10 +540,13 @@ export function AdminLayout({
               <div className="flex items-center gap-3">
                 <button
                   onClick={onLogout}
-                  className={`flex-shrink-0 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} transition-colors duration-300`}
+                  className={`flex w-full min-w-0 items-center gap-3 ${isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors duration-300`}
                   title="Logout"
                 >
                   <LogOut className="h-5 w-5" />
+                  <span className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {displayName ?? 'Admin'}
+                  </span>
                   <span className="sr-only">Sign out</span>
                 </button>
               </div>

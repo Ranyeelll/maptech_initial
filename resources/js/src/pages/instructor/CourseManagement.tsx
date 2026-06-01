@@ -3,6 +3,7 @@ import useConfirm from '../../hooks/useConfirm';
 import { useToast } from '../../components/ToastProvider';
 import { createPortal } from 'react-dom';
 import { safeArray } from '../../utils/safe';
+import { actionButtonClasses } from '../../utils/uiPalette';
 import {
   Search,
   Plus,
@@ -609,6 +610,8 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
       const bodyData: Record<string, unknown> = {};
       if (!unlockPermanent) {
         bodyData.expires_at = toUtcIsoFromManilaInput(unlockUntil) ?? undefined;
+      } else {
+        bodyData.permanent = true;
       }
 
       const r = await fetch(`${API_BASE}/instructor/courses/${courseUnlockTarget.id}/enrollments/${selectedUnlockEmployeeId}/unlock`, {
@@ -749,14 +752,14 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                   <div className="flex space-x-1">
                     <button
                       onClick={() => openEdit(course)}
-                      className="course-card-icon-btn p-1.5 rounded-md text-slate-600 hover:text-amber-700 hover:bg-amber-50 dark:text-slate-300 dark:hover:text-amber-300 dark:hover:bg-slate-800"
+                      className="course-card-icon-btn btn-icon btn-icon-edit um-icon-btn"
                       title="Edit"
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(course.id)}
-                      className="course-card-icon-btn p-1.5 rounded-md text-slate-600 hover:text-rose-700 hover:bg-rose-50 dark:text-slate-300 dark:hover:text-rose-300 dark:hover:bg-slate-800"
+                      className="course-card-icon-btn btn-icon btn-icon-delete um-icon-btn"
                       title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -819,7 +822,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                   {ended && (
                     <button
                       onClick={() => openCourseUnlockModal(course)}
-                      className="w-full text-sm px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                      className="w-full text-sm px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-600 rounded text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                     >
                       Unlock
                     </button>
@@ -1125,7 +1128,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
               <div className="flex gap-3 justify-end mt-6">
                 <button
                   onClick={() => { setCourseUnlockModalOpen(false); setCourseUnlockTarget(null); }}
-                  className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-md text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </button>
@@ -1219,7 +1222,7 @@ export function InstructorCourseManagement({ onNavigate }: Props) {
                     <div className="flex gap-3 justify-end">
                       <button
                         onClick={() => { setPushDeptModalOpen(false); setPushModuleId(null); setDeptEmployees([]); setLoadingEmployees(false); }}
-                        className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
                       >
                         Cancel
                       </button>

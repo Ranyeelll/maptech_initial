@@ -202,9 +202,13 @@ export function InstructorLayout({
               <div className="flex items-center gap-3">
                 <button
                   onClick={onLogout}
-                  className={`flex-shrink-0 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} transition-colors duration-300`}
+                  className={`flex w-full min-w-0 items-center gap-3 ${isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors duration-300`}
                   title="Logout">
                   <LogOut className="h-5 w-5" />
+                  <span className={`truncate text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {displayName}
+                  </span>
+                  <span className="sr-only">Sign out</span>
                 </button>
               </div>
             </div>
@@ -213,10 +217,10 @@ export function InstructorLayout({
       </div>
 
       <div
-        className="flex w-full min-w-0 flex-col overflow-x-hidden transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        className="relative isolate flex w-full min-w-0 flex-col overflow-x-hidden transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
         style={isDesktop ? { paddingLeft: isSidebarHovered ? '16rem' : '5rem' } : undefined}
       >
-        <div className={`sticky top-0 z-10 flex min-h-16 flex-wrap items-center border-b ${isDark ? 'bg-slate-900/75 backdrop-blur-md border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+        <div className={`relative sticky top-0 z-[10100] flex min-h-16 flex-wrap items-center border-b ${isDark ? 'bg-slate-900/75 backdrop-blur-md border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
           {!isDesktop && (
             <button
               type="button"
@@ -226,8 +230,8 @@ export function InstructorLayout({
               <Menu className="h-6 w-6" />
             </button>
           )}
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 overflow-x-hidden px-3 py-3 sm:px-4">
-            <div className="order-1 ml-2 md:ml-3 w-full min-w-0 md:w-auto">
+          <div className="relative z-[10200] flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3 overflow-x-hidden px-3 py-3 sm:px-4">
+            <div className="pointer-events-none order-1 ml-2 md:ml-3 w-full min-w-0 md:w-auto">
               <h1 className={`truncate text-xl font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
                 {pageTitle}
               </h1>
@@ -236,11 +240,11 @@ export function InstructorLayout({
               </p>
             </div>
 
-            <div className="order-2 ml-auto flex items-center gap-3 md:order-3 md:ml-6">
+            <div className="order-2 ml-auto relative z-[10250] flex items-center gap-3 pointer-events-auto md:order-3 md:ml-6">
               <button
                 onClick={onToggleTheme}
                 aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                className="inline-flex items-center"
+                className="inline-flex items-center shrink-0"
                 title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 <span className="inline-flex items-center gap-2 rounded-full border border-slate-300/60 bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition-colors dark:border-slate-600/70 dark:bg-slate-900/85 dark:text-slate-100">
@@ -260,10 +264,10 @@ export function InstructorLayout({
                   <span className="tracking-wide">{theme === 'dark' ? 'Dark' : 'Light'}</span>
                 </span>
               </button>
-              <NotificationBell role="Instructor" onOpenAll={() => onNavigate('notifications')} />
+              <NotificationBell className="relative z-[10300] shrink-0 pointer-events-auto" role="Instructor" onOpenAll={() => onNavigate('notifications')} />
 
               {/* Profile block */}
-              <div className="hidden sm:flex items-center gap-3 mr-2">
+              <div className="hidden sm:flex items-center gap-3 mr-2 shrink-0 pointer-events-auto">
                 {user.profile_picture ? (
                   <img
                     src={user.profile_picture}
@@ -284,7 +288,7 @@ export function InstructorLayout({
             </div>
           </div>
         </div>
-        <main className={`flex-1 min-w-0 overflow-x-auto overflow-y-auto p-4 sm:p-6 ${isDark ? 'bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900' : 'bg-slate-50 dark:bg-slate-900'}`}>
+        <main className={`relative z-0 flex-1 min-w-0 overflow-x-auto overflow-y-auto p-4 sm:p-6 ${isDark ? 'bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900' : 'bg-slate-50 dark:bg-slate-900'}`}>
           {children}
         </main>
       </div>

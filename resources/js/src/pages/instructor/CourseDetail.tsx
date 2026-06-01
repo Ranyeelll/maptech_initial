@@ -90,10 +90,10 @@ interface QuizSummary {
   id: number;
   title: string;
   description: string | null;
+  quiz_type?: 'pre-test' | 'post-test' | 'regular' | 'final-assessment' | null;
   pass_percentage: number;
   module_id: number | null;
   lesson_id: number | null;
-  quiz_type: string | null;
   question_count: number;
   created_at: string;
 }
@@ -114,6 +114,7 @@ function AddQuizForm({ moduleId, lessonId = null, courseId, onCreated, onCancel,
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [passPercent, setPassPercent] = useState(70);
+  const [selectedQuizType, setSelectedQuizType] = useState<'pre-test' | 'post-test' | 'regular'>(quizType);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -182,7 +183,9 @@ function AddQuizForm({ moduleId, lessonId = null, courseId, onCreated, onCancel,
 
   return (
     <div className={`mt-3 p-4 ${bgColor} border ${borderColor} rounded-lg space-y-3`}>
-      <p className={`text-xs font-semibold ${textColor} uppercase tracking-wide`}>Attach {quizTypeLabel} to this Module</p>
+      <p className={`text-xs font-semibold ${textColor} uppercase tracking-wide`}>
+        Attach {quizTypeLabel} to this {lessonId ? 'Lesson' : 'Module'}
+      </p>
       {err && <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{err}</p>}
       <input
         type="text"
@@ -1533,8 +1536,8 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
       </button>
 
       {/* Course Header */}
-      <div className={`${headerColor} rounded-xl p-6 text-white`}>
-        <div className="flex items-start justify-between">
+      <div className={`${headerColor} rounded-2xl p-6 text-white shadow-sm`}>
+        <div className="flex items-start justify-between gap-4">
           <div>
             <div className="mb-2 flex items-center gap-2">
               <span className="text-xs font-semibold bg-white/20 px-2 py-0.5 rounded-full inline-block">
@@ -1572,13 +1575,13 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
               </>
             )}
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-3">
             {editingCourseMeta ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-full bg-white/10 p-1 backdrop-blur-sm">
                 <button
                   onClick={handleSaveCourseMeta}
                   disabled={savingCourseMeta || !courseTitleDraft.trim()}
-                  className="inline-flex items-center gap-1 rounded-md border border-white/40 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/35 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {savingCourseMeta ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                   {savingCourseMeta ? 'Saving' : 'Save'}
@@ -1586,7 +1589,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                 <button
                   onClick={cancelEditCourseMeta}
                   disabled={savingCourseMeta}
-                  className="inline-flex items-center gap-1 rounded-md border border-white/40 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-white/90 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <X className="h-3 w-3" />
                   Cancel
@@ -1597,7 +1600,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                 onClick={startEditCourseMeta}
                 aria-label="Edit course details"
                 title="Edit course details"
-                className="inline-flex items-center justify-center p-1.5 rounded-md text-white/90 hover:text-white hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-full p-2 text-white/90 hover:text-white hover:bg-white/10"
               >
                 <Pencil className="h-3 w-3" />
               </button>
@@ -1619,13 +1622,13 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200">
+      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
         <button
           onClick={() => setActiveTab('modules')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`inline-flex items-center gap-2 whitespace-nowrap rounded-t-xl px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'modules'
               ? 'border-green-600 text-green-700'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <span className="flex items-center gap-1.5">
@@ -1636,10 +1639,10 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
         </button>
         <button
           onClick={() => setActiveTab('quizzes')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`inline-flex items-center gap-2 whitespace-nowrap rounded-t-xl px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'quizzes'
               ? 'border-green-600 text-green-700'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <span className="flex items-center gap-1.5">
@@ -1650,10 +1653,10 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
         </button>
         <button
           onClick={() => setActiveTab('students')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`inline-flex items-center gap-2 whitespace-nowrap rounded-t-xl px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'students'
               ? 'border-green-600 text-green-700'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <span className="flex items-center gap-1.5">
@@ -1666,8 +1669,8 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
 
       {/* Modules Panel */}
       {activeTab === 'modules' && (
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center gap-3">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-slate-600" />
             <h2 className="text-base font-semibold text-slate-900">
@@ -1686,22 +1689,22 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
 
         {/* Add module form */}
         {addingModule && (
-          <div className="mx-6 mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-700 mb-3">New Module</h3>
+          <div className="mx-6 mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">New Module</h3>
             <div className="space-y-3">
               <input
                 type="text"
                 placeholder="Module title"
                 value={moduleTitle}
                 onChange={(e) => setModuleTitle(e.target.value)}
-                className="w-full border border-slate-300 rounded-md py-2 px-3 text-sm focus:ring-green-500 focus:border-green-500"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-green-500 focus:ring-green-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
               />
               <textarea
                 rows={6}
                 placeholder="Lesson content — e.g. Introduction, What to learn, Where to start, What to know..."
                 value={moduleDescription}
                 onChange={(e) => setModuleDescription(e.target.value)}
-                className="w-full border border-slate-300 rounded-md py-2 px-3 text-sm focus:ring-green-500 focus:border-green-500 resize-y"
+                className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-green-500 focus:ring-green-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
               />
               {moduleError && (
                 <p className="text-xs text-red-600 flex items-center gap-1">
@@ -1743,7 +1746,6 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
           ) : (
             safeArray(course.modules).map((mod, idx) => {
               const quizzes = quizByModule[mod.id] || [];
-              const quiz = quizzes[0]; // First quiz for backward compatibility
               const hasQuiz = quizzes.length > 0;
               const isExpanded = expandedModules.has(mod.id);
               const isEditingMod = editingModuleId === mod.id;
@@ -1796,7 +1798,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                           <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{mod.title}</p>
                           <p className="text-xs text-slate-400 dark:text-slate-300 mt-0.5">
                             {mod.lessons?.length || 0} lesson{(mod.lessons?.length || 0) !== 1 ? 's' : ''}
-                            {quiz ? ` · Quiz: ${quiz.pass_percentage}% to pass` : ''}
+                            {hasQuiz ? ` · ${quizzes.length} quiz${quizzes.length !== 1 ? 'zes' : ''}` : ''}
                           </p>
                         </>
                       )}
@@ -1804,10 +1806,10 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
 
                     {quizzesLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin text-slate-400 flex-shrink-0" />
-                    ) : quiz ? (
+                    ) : hasQuiz ? (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium flex-shrink-0">
                         <HelpCircle className="h-3.5 w-3.5" />
-                        Quiz
+                        {quizzes.length} Quiz{quizzes.length !== 1 ? 'zes' : ''}
                       </span>
                     ) : null}
 
@@ -1989,14 +1991,14 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                                         </button>
                                       </div>
                                       {lesson.text_content && (
-                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200">
+                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200 dark:border-slate-700">
                                           {quickEditLessonId === lesson.id ? (
                                             <div className="space-y-2">
                                               <textarea
                                                 value={quickEditInfo}
                                                 onChange={(e) => setQuickEditInfo(e.target.value)}
                                                 rows={3}
-                                                className="w-full border border-slate-300 rounded-md py-1.5 px-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                                                className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-md py-1.5 px-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
                                                 placeholder="Enter lesson text information or definition"
                                               />
                                               <div className="flex items-center gap-2">
@@ -2026,7 +2028,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                                         </div>
                                       )}
                                       {lesson.content_url && lesson.file_type === 'video' && (
-                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200">
+                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200 dark:border-slate-700">
                                           {/(youtube\.com|youtu\.be)/.test(lesson.content_url) ? (
                                             <div className="w-full max-h-80 rounded-md overflow-hidden">
                                               <YouTubePlayer contentUrl={lesson.content_url} lessonId={lesson.id} />
@@ -2039,8 +2041,8 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                                         </div>
                                       )}
                                       {lesson.content_url && lesson.file_type === 'pdf' && (
-                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200">
-                                          <iframe src={lesson.content_url} className="w-full h-96 rounded-md border border-slate-300" title={lesson.title} />
+                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200 dark:border-slate-700">
+                                          <iframe src={lesson.content_url} className="w-full h-96 rounded-md border border-slate-300 dark:border-slate-600" title={lesson.title} />
                                         </div>
                                       )}
                                       {lesson.content_url && lesson.file_type === 'presentation' && (

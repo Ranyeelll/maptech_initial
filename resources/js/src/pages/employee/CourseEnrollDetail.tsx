@@ -11,6 +11,7 @@ import {
   User,
 } from 'lucide-react';
 import { safeArray } from '../../utils/safe';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
 
@@ -233,7 +234,7 @@ export function CourseEnrollDetail({ courseId, onNavigate, onBack }: CourseEnrol
           <button
             onClick={handleEnroll}
             disabled={enrolling}
-            className="w-full flex justify-center items-center gap-2 py-3.5 px-6 rounded-xl text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-60 shadow-md hover:shadow-lg transition-all"
+            className={`w-full flex justify-center items-center gap-2 py-3.5 px-6 rounded-xl text-base font-semibold disabled:opacity-60 shadow-md hover:shadow-lg transition-all ${actionButtonClasses.success}`}
           >
             {enrolling ? (
               <>

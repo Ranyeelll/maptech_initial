@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\Lesson;
 use App\Models\Module;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
@@ -29,14 +30,15 @@ class QuizController extends Controller
             ->get()
             ->map(function ($quiz) {
                 return [
-                    'id' => $quiz->id,
-                    'title' => $quiz->title,
-                    'description' => $quiz->description,
-                    'pass_percentage' => $quiz->pass_percentage,
-                    'course_id' => $quiz->course_id,
-                    'course_title' => $quiz->course->title,
-                    'course_dept' => $quiz->course->department,
-                    'subdepartment_id' => $quiz->course->subdepartment_id,
+                    'id'                 => $quiz->id,
+                    'title'              => $quiz->title,
+                    'description'        => $quiz->description,
+                    'quiz_type'          => $quiz->quiz_type ?? 'regular',
+                    'pass_percentage'    => $quiz->pass_percentage,
+                    'course_id'          => $quiz->course_id,
+                    'course_title'       => $quiz->course->title,
+                    'course_dept'        => $quiz->course->department,
+                    'subdepartment_id'   => $quiz->course->subdepartment_id,
                     'subdepartment_name' => $quiz->course->subdepartment?->name,
                     'module_id'          => $quiz->module_id,
                     'module_title'       => $quiz->module?->title,
@@ -60,6 +62,7 @@ class QuizController extends Controller
             'quiz:id,title,course_id,module_id,pass_percentage',
             'quiz.course:id,title,department,subdepartment_id,instructor_id',
             'quiz.module:id,title',
+            'quiz.lesson:id,title,module_id',
         ]);
 
         if (! empty($quizId)) {
@@ -78,8 +81,11 @@ class QuizController extends Controller
                     'employee_department' => $attempt->user?->department,
                     'quiz_id' => $attempt->quiz_id,
                     'quiz_title' => $attempt->quiz?->title,
+                    'quiz_type' => $attempt->quiz?->quiz_type ?? 'regular',
                     'module_id' => $attempt->quiz?->module_id,
                     'module_title' => $attempt->quiz?->module?->title,
+                    'lesson_id' => $attempt->quiz?->lesson_id,
+                    'lesson_title' => $attempt->quiz?->lesson?->title,
                     'course_id' => $attempt->quiz?->course_id,
                     'course_title' => $attempt->quiz?->course?->title,
                     'pass_percentage' => $attempt->quiz?->pass_percentage,
@@ -110,10 +116,11 @@ class QuizController extends Controller
             ->where('course_id', $courseId)
             ->latest()
             ->get()
-            ->map(fn ($quiz) => [
-                'id' => $quiz->id,
-                'title' => $quiz->title,
-                'description' => $quiz->description,
+            ->map(fn($quiz) => [
+                'id'              => $quiz->id,
+                'title'           => $quiz->title,
+                'description'     => $quiz->description,
+                'quiz_type'       => $quiz->quiz_type ?? 'regular',
                 'pass_percentage' => $quiz->pass_percentage,
                 'module_id'       => $quiz->module_id,
                 'module_title'    => $quiz->module?->title,
@@ -138,18 +145,21 @@ class QuizController extends Controller
             }
         }
 
-        $quizzes = Quiz::with('questions')
+        $quizzes = Quiz::with(['questions', 'lesson'])
             ->where('module_id', $moduleId)
             ->latest()
             ->get()
-            ->map(fn ($quiz) => [
-                'id' => $quiz->id,
-                'title' => $quiz->title,
-                'description' => $quiz->description,
+            ->map(fn($quiz) => [
+                'id'              => $quiz->id,
+                'title'           => $quiz->title,
+                'description'     => $quiz->description,
+                'quiz_type'       => $quiz->quiz_type ?? 'regular',
                 'pass_percentage' => $quiz->pass_percentage,
-                'module_id' => $quiz->module_id,
-                'question_count' => $quiz->questions->count(),
-                'created_at' => $quiz->created_at,
+                'module_id'       => $quiz->module_id,
+                'lesson_id'       => $quiz->lesson_id,
+                'lesson_title'    => $quiz->lesson?->title,
+                'question_count'  => $quiz->questions->count(),
+                'created_at'      => $quiz->created_at,
             ]);
 
         return response()->json($quizzes);
@@ -178,6 +188,8 @@ class QuizController extends Controller
         $quiz = Quiz::create([
             'course_id'       => $courseId,
             'module_id'       => $validated['module_id'] ?? null,
+            'lesson_id'       => $validated['lesson_id'] ?? null,
+            'quiz_type'       => $validated['quiz_type'] ?? 'regular',
             'title'           => $validated['title'],
             'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
@@ -186,9 +198,10 @@ class QuizController extends Controller
         ]);
 
         return response()->json([
-            'id'             => $quiz->id,
-            'title'          => $quiz->title,
-            'description'    => $quiz->description,
+            'id'              => $quiz->id,
+            'title'           => $quiz->title,
+            'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
             'course_id'      => $quiz->course_id,
             'module_id'      => $quiz->module_id,
@@ -223,6 +236,8 @@ class QuizController extends Controller
         $quiz = Quiz::create([
             'course_id'       => $module->course_id,
             'module_id'       => $moduleId,
+            'lesson_id'       => $validated['lesson_id'] ?? null,
+            'quiz_type'       => $validated['quiz_type'] ?? 'regular',
             'title'           => $validated['title'],
             'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
@@ -231,9 +246,10 @@ class QuizController extends Controller
         ]);
 
         return response()->json([
-            'id'             => $quiz->id,
-            'title'          => $quiz->title,
-            'description'    => $quiz->description,
+            'id'              => $quiz->id,
+            'title'           => $quiz->title,
+            'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
             'course_id'      => $quiz->course_id,
             'module_id'      => $quiz->module_id,
@@ -247,7 +263,7 @@ class QuizController extends Controller
     /** GET /admin/quizzes/{id} — quiz detail with questions & options */
     public function show(Request $request, int $id)
     {
-        $quiz = Quiz::with(['course', 'module', 'questions.options'])->findOrFail($id);
+        $quiz = Quiz::with(['course', 'module', 'lesson', 'questions.options'])->findOrFail($id);
         $user = $request->user();
         if ($user && $user->isEmployee()) {
             $course = $quiz->course;
@@ -257,16 +273,19 @@ class QuizController extends Controller
         }
 
         return response()->json([
-            'id' => $quiz->id,
-            'title' => $quiz->title,
-            'description' => $quiz->description,
+            'id'              => $quiz->id,
+            'title'           => $quiz->title,
+            'description'     => $quiz->description,
+            'quiz_type'       => $quiz->quiz_type ?? 'regular',
             'pass_percentage' => $quiz->pass_percentage,
-            'course_id' => $quiz->course_id,
-            'course_title' => $quiz->course->title,
-            'module_id' => $quiz->module_id,
-            'module_title' => $quiz->module?->title,
-            'questions' => $quiz->questions->map(fn ($q) => $this->formatQuestion($q))->values(),
-            'created_at' => $quiz->created_at,
+            'course_id'       => $quiz->course_id,
+            'course_title'    => $quiz->course->title,
+            'module_id'       => $quiz->module_id,
+            'module_title'    => $quiz->module?->title,
+            'lesson_id'       => $quiz->lesson_id,
+            'lesson_title'    => $quiz->lesson?->title,
+            'questions'       => $quiz->questions->map(fn($q) => $this->formatQuestion($q))->values(),
+            'created_at'      => $quiz->created_at,
         ]);
     }
 

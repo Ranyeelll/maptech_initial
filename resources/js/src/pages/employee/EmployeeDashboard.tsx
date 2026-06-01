@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserTimeLog } from '../../components/UserTimeLog';
 import { safeArray } from '../../utils/safe';
+import { actionButtonClasses, statIconContainerClasses, statIconGlyphClasses } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
 const MAPTECH_LOGO_URL = '/assets/Maptech-Official-Logo.png';
@@ -594,7 +595,7 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
           <div className="w-full sm:w-auto">
             <button
               onClick={() => onNavigate?.('course-viewer', resumeCourse.id)}
-              className="btn btn-primary sm:w-auto"
+              className={`inline-flex w-full items-center justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium shadow-sm sm:w-auto ${actionButtonClasses.success}`}
             >
               Resume Learning
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -607,8 +608,8 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
         <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="flex items-center">
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-full">
-              <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className={statIconContainerClasses.blue}>
+              <BookOpen className={statIconGlyphClasses.blue} />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -621,8 +622,8 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
 
         <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="flex items-center">
-            <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-full">
-              <GraduationCap className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <div className={statIconContainerClasses.purple}>
+              <GraduationCap className={statIconGlyphClasses.purple} />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Custom Modules</p>
@@ -633,8 +634,8 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
 
         <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="flex items-center">
-            <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-full">
-              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className={statIconContainerClasses.green}>
+              <CheckCircle className={statIconGlyphClasses.green} />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Completed</p>
@@ -645,8 +646,8 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
 
         <div className="bg-white dark:bg-slate-900/80 p-4 sm:p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="flex items-center">
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-full">
-              <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+            <div className={statIconContainerClasses.yellow}>
+              <Clock className={statIconGlyphClasses.yellow} />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">In Progress</p>
@@ -657,8 +658,8 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
 
         <div className="bg-white dark:bg-slate-900/80 p-6 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="flex items-center">
-            <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-full">
-              <Award className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <div className={statIconContainerClasses.purple}>
+              <Award className={statIconGlyphClasses.purple} />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Certificates</p>
@@ -711,7 +712,7 @@ export function EmployeeDashboard({ onNavigate }: EmployeeDashboardProps) {
                         <div className="mt-4">
                           <button
                             onClick={() => onNavigate?.('course-enroll', course.id)}
-                            className="btn btn-primary btn-sm"
+                            className={`px-4 py-2 text-sm font-medium rounded-md ${actionButtonClasses.success}`}
                           >
                             View Offering
                           </button>

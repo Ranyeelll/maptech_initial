@@ -32,6 +32,7 @@ const ReportsAnalytics = lazy(() => import('./pages/admin/ReportsAnalytics').the
 const NotificationManagement = lazy(() => import('./pages/admin/NotificationManagement').then((module) => ({ default: module.NotificationManagement })));
 const AuditLogs = lazy(() => import('./pages/admin/AuditLogs').then((module) => ({ default: module.AuditLogs })));
 const AdminFeedback = lazy(() => import('./pages/admin/AdminFeedback').then((module) => ({ default: module.AdminFeedback })));
+const ArchivesPage = lazy(() => import('./pages/admin/ArchivesPage'));
 const BusinessDetails = lazy(() => import('./pages/admin/BusinessDetails').then((module) => ({ default: module.BusinessDetails })));
 const ProductLogoManager = lazy(() => import('./pages/admin/ProductLogoManager').then((module) => ({ default: module.ProductLogoManager })));
 const CustomFieldBuilder = lazy(() => import('./pages/admin/CustomFieldBuilder').then((module) => ({ default: module.CustomFieldBuilder })));
@@ -42,6 +43,7 @@ const InstructorDashboard = lazy(() => import('./pages/instructor/InstructorDash
 const InstructorCourseManagement = lazy(() => import('./pages/instructor/CourseManagement').then((module) => ({ default: module.InstructorCourseManagement })));
 const InstructorCourseDetail = lazy(() => import('./pages/instructor/CourseDetail').then((module) => ({ default: module.InstructorCourseDetail })));
 const LessonVideoUpload = lazy(() => import('./pages/instructor/LessonVideoUpload').then((module) => ({ default: module.LessonVideoUpload })));
+const QuizAssessmentManagement = lazy(() => import('./pages/instructor/QuizAssessmentManagement').then((module) => ({ default: module.QuizAssessmentManagement })));
 const QuizEvaluation = lazy(() => import('./pages/instructor/QuizEvaluation').then((module) => ({ default: module.QuizEvaluation })));
 const InstructorNotifications = lazy(() => import('./pages/instructor/InstructorNotifications').then((module) => ({ default: module.InstructorNotifications })));
 const InstructorFeedback = lazy(() => import('./pages/instructor/InstructorFeedback').then((module) => ({ default: module.InstructorFeedback })));
@@ -686,7 +688,8 @@ export function App() {
           <div key={transitionKey} className="page-open-transition">
             {currentPage === 'dashboard' && <AdminDashboard onNavigate={handleNavigate} />}
             {currentPage === 'departments' && <DepartmentManagement />}
-            {currentPage === 'users' && <UserManagement currentUserEmail={user?.email} onLogout={async () => handleLogout()} />}
+            {currentPage === 'users' && <UserManagement currentUserEmail={user?.email} onLogout={async () => handleLogout()} onNavigate={handleNavigate} />}
+            {currentPage === 'archives' && <ArchivesPage currentUserEmail={user?.email} onLogout={async () => handleLogout()} onNavigate={handleNavigate} />}
             {currentPage === 'courses' && <CoursesAndContent onNavigate={handleNavigate} />}
             {currentPage === 'course-detail' && <InstructorCourseDetail courseId={selectedCourseId || ''} onBack={() => handleNavigate('courses')} onManageQuiz={(quizId, courseId) => { setSelectedCourseId(courseId); handleNavigate('course-detail', courseId, quizId); }} apiPrefix="admin" />}
             {currentPage === 'evaluation' && <QuizEvaluation apiPrefix="admin" />}
@@ -697,7 +700,7 @@ export function App() {
             {currentPage === 'qa' && <AdminQADiscussion userId={user.id} />}
             {currentPage === 'audit-logs' && <AuditLogs />}
             {currentPage === 'business-details' && <BusinessDetails />}
-            {currentPage === 'feedbacks' && <AdminFeedback />}
+            {currentPage === 'feedbacks' && <AdminFeedback onNavigate={handleNavigate} />}
             {currentPage === 'product-logos' && <ProductLogoManager />}
             {currentPage === 'custom-field' && (
               <CustomFieldBuilder
@@ -707,7 +710,7 @@ export function App() {
             )}
             {currentPage === 'settings' && <ProfileSettings />}
           {/* Fallback to custom module page for any unmatched route */}
-          {!['dashboard', 'departments', 'users', 'courses', 'custom-field', 'course-detail', 'evaluation', 'lessons', 'course-content-editor', 'enrollments', 'reports', 'notifications', 'qa', 'audit-logs', 'business-details', 'feedbacks', 'product-logos', 'settings'].includes(currentPage) && (
+          {!['dashboard', 'departments', 'users', 'archives', 'courses', 'custom-field', 'course-detail', 'evaluation', 'lessons', 'course-content-editor', 'enrollments', 'reports', 'notifications', 'qa', 'audit-logs', 'business-details', 'feedbacks', 'product-logos', 'settings'].includes(currentPage) && (
             <CustomModulePage routePath={currentPage} />
           )}
           </div>

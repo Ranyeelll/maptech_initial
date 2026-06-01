@@ -65,13 +65,11 @@ class Notification extends Model
     protected static function booted()
     {
         static::created(function (Notification $notification) {
-            // Clear cached unread count and broadcast the new notification
+            // Clear cached unread count and broadcast the new notification.
+            // Avoid per-create unread recount + count broadcast because it adds
+            // significant latency during bulk sends.
             Cache::forget("user:{$notification->user_id}:notifications:unread_count");
             event(new NotificationCreated($notification));
-
-            // broadcast updated count
-            $count = Notification::where('user_id', $notification->user_id)->whereNull('read_at')->count();
-            event(new NotificationCountUpdated($notification->user_id, $count));
         });
 
         static::updated(function (Notification $notification) {

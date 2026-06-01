@@ -28,6 +28,7 @@ import { CustomModuleViewer } from './CustomModuleViewer';
 import { lazy, Suspense } from 'react';
 const PDFViewer = lazy(() => import('../../components/PDFViewer'));
 import PresentationViewer from '../../components/PresentationViewer';
+import { actionButtonClasses } from '../../utils/uiPalette';
 
 const API_BASE = '/api';
 
@@ -778,7 +779,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 href={officeViewerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md"
+                className={`inline-flex items-center px-5 py-2.5 rounded-lg font-medium transition-colors shadow-md ${actionButtonClasses.info}`}
               >
                 <Eye className="h-5 w-5 mr-2" />View / Study
               </a>
@@ -834,7 +835,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 href={officeViewerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md"
+                className={`inline-flex items-center px-5 py-2.5 rounded-lg font-medium transition-colors shadow-md ${actionButtonClasses.info}`}
               >
                 <Eye className="h-5 w-5 mr-2" />
                 View / Study
@@ -903,7 +904,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 href={lessonFileUrl || undefined}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md"
+                className={`inline-flex items-center px-6 py-3 rounded-lg font-medium transition-colors shadow-md ${actionButtonClasses.info}`}
               >
                 <ExternalLink className="h-5 w-5 mr-2" />
                 Open / View File
@@ -975,7 +976,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
           <button
             onClick={submitQuiz}
             disabled={!allAnswered || quizSubmitting}
-            className="w-full py-3 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            className={`w-full py-3 font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2 ${actionButtonClasses.primary}`}
           >
             {quizSubmitting ? <><Loader className="h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Quiz'}
           </button>
@@ -999,7 +1000,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
             </div>
             <button
               onClick={() => setShowResultRevealed(true)}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold rounded-lg text-base transition-colors"
+              className={`px-8 py-3 font-semibold rounded-lg text-base transition-colors ${actionButtonClasses.info}`}
             >
               See Quiz Result
             </button>
@@ -1045,7 +1046,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                       {currentModuleIndex < modules.length - 1 && modules[currentModuleIndex + 1]?.is_unlocked && (
                         <button
                           onClick={() => selectModule(modules[currentModuleIndex + 1])}
-                          className="mt-3 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg flex items-center gap-2 transition-colors"
+                          className={`mt-3 px-6 py-2.5 font-semibold rounded-lg flex items-center gap-2 transition-colors ${actionButtonClasses.success}`}
                         >
                           Proceed to Next Module <ArrowRight className="h-4 w-4" />
                         </button>
@@ -1339,7 +1340,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                   }
                   window.location.assign(`${window.location.pathname}?page=certificates`);
                 }}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
+                className={`rounded-lg px-5 py-2.5 text-sm font-semibold ${actionButtonClasses.info}`}
               >
                 View Certificates
               </button>
@@ -1450,7 +1451,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
               <button
                 type="button"
                 onClick={() => setShowSentenceModal(false)}
-                className="rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+                className={`rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors ${actionButtonClasses.info}`}
               >
                 Close
               </button>
@@ -1633,7 +1634,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 ) : (
                   <button
                     onClick={() => selectQuiz(currentModule)}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white text-sm font-semibold rounded-lg"
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg ${actionButtonClasses.success}`}
                   >
                     Take Quiz
                   </button>
@@ -1763,7 +1764,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                   <button
                     onClick={goToNext}
                     disabled={!canGoNext}
-                    className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`flex items-center px-4 py-2 rounded-md font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${actionButtonClasses.success}`}
                   >
                     Next
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -1853,14 +1854,14 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
 
                   {!quizResult ? (
                     <div className="flex items-center space-x-3">
-                      <button onClick={submitQuiz} className="px-4 py-2 bg-green-600 text-white rounded">Submit Assessment</button>
+                      <button onClick={submitQuiz} className={`px-4 py-2 rounded ${actionButtonClasses.success}`}>Submit Assessment</button>
                       <button onClick={() => { setShowQuiz(false); setQuizAnswers({}); }} className="px-4 py-2 border rounded">Close</button>
                     </div>
                   ) : (
                     <div className="mt-4">
                       <p className="font-semibold">Result: {quizResult.score} / {quizResult.total}</p>
                       <button onClick={() => { setQuizResult(null); setQuizAnswers({}); }} className="mt-2 px-3 py-1 border rounded">Retry</button>
-                      <button onClick={() => setShowQuiz(false)} className="mt-2 ml-2 px-3 py-1 bg-green-600 text-white rounded">Close</button>
+                      <button onClick={() => setShowQuiz(false)} className={`mt-2 ml-2 px-3 py-1 rounded ${actionButtonClasses.success}`}>Close</button>
                     </div>
                   )}
                 </div>

@@ -1079,7 +1079,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor',
                     <button
                       onClick={handleAddQuestion}
                       disabled={addingQuestion}
-                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 disabled:opacity-50"
+                      className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md shadow-sm disabled:opacity-50"
                     >
                       {addingQuestion ? 'Adding...' : 'Add Question'}
                     </button>
@@ -1164,7 +1164,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor',
                               <button
                                 onClick={handleSaveQuestionEdit}
                                 disabled={savingQuestionEdit}
-                                className="px-2.5 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                                className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded disabled:opacity-50"
                               >
                                 {savingQuestionEdit ? 'Saving...' : 'Save Question'}
                               </button>
@@ -1195,7 +1195,7 @@ export function QuizAssessmentManagement({ onOpenQuiz, apiPrefix = 'instructor',
               <button
                 onClick={handleSaveEdit}
                 disabled={savingEdit}
-                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md shadow-sm disabled:opacity-50"
               >
                 {savingEdit ? 'Saving...' : 'Save Changes'}
               </button>

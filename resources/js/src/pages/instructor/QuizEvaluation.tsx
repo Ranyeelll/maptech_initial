@@ -95,7 +95,7 @@ export function QuizEvaluation({ apiPrefix = 'instructor' }: Props) {
         </div>
         <button
           onClick={loadResults}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-md shadow-sm transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-md shadow-sm transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh

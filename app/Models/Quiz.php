@@ -12,6 +12,7 @@ class Quiz extends Model
 
     protected $casts = [
         'pass_percentage' => 'integer',
+        'quiz_type' => 'string',
     ];
 
     public function course(): BelongsTo

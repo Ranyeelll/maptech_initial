@@ -36,8 +36,14 @@ interface Course {
 const NOTIFICATION_LIMIT = 50;
 const PENDING_NOTIFICATION_ID_KEY = 'maptech_pending_notification_id';
 const PENDING_NOTIFICATION_ROLE_KEY = 'maptech_pending_notification_role';
+const PENDING_NOTIFICATION_ITEM_KEY = 'maptech_pending_notification_item';
 const OPEN_NOTIFICATION_EVENT = 'maptech-open-notification';
 const NOTIFICATION_READ_EVENT = 'maptech-notification-read';
+
+type PendingNotificationEventDetail = {
+  role?: string;
+  notification?: Notification;
+};
 
 function extractNotificationItems(payload: any): Notification[] {
   const candidates = [
@@ -138,6 +144,7 @@ export function EmployeeNotifications() {
     fetchEmployeeProfile();
 
     // Subscribe to realtime notifications if Echo is available
+    let cleanup: (() => void) | undefined;
     (async () => {
       try {
         const Echo = (window as any).Echo;
@@ -169,7 +176,7 @@ export function EmployeeNotifications() {
         channel.listen('NotificationCreated', createdHandler);
         channel.listen('NotificationCountUpdated', countHandler);
 
-        return () => {
+        cleanup = () => {
           try {
             channel.stopListening('NotificationCreated');
             channel.stopListening('NotificationCountUpdated');
@@ -183,7 +190,35 @@ export function EmployeeNotifications() {
     })();
 
     return () => {
-      // no-op cleanup
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const Echo = (window as any).Echo;
+    const hasRealtime = !!Echo && typeof Echo.private === 'function';
+    if (hasRealtime) return;
+
+    const syncFallback = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchNotifications({ silent: true });
+      fetchUnreadCount();
+    };
+
+    const handleVisibilityChange = () => {
+      syncFallback();
+    };
+
+    window.addEventListener('focus', syncFallback);
+    window.addEventListener('online', syncFallback);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', syncFallback);
+      window.removeEventListener('online', syncFallback);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -207,9 +242,12 @@ export function EmployeeNotifications() {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const res = await fetch('/api/employee/notifications', fetchOptions('GET'));
       if (!res.ok) {
         throw new Error(`Failed to fetch employee notifications: ${res.status}`);
@@ -233,7 +271,9 @@ export function EmployeeNotifications() {
     } catch (err) {
       console.error('Failed to load notifications:', err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -263,28 +303,42 @@ export function EmployeeNotifications() {
     }
   };
 
-  const openNotificationDetail = async (notification: Notification) => {
+  const openNotificationDetail = (notification: Notification) => {
     setSelectedNotification(notification);
     // Mark as read when opening if not already read
     if (!notification.read_at) {
-      await markAsRead(notification.id);
+      void markAsRead(notification.id);
     }
   };
 
   const tryOpenPendingNotification = React.useCallback(() => {
     const pendingIdRaw = localStorage.getItem(PENDING_NOTIFICATION_ID_KEY);
     const pendingRole = localStorage.getItem(PENDING_NOTIFICATION_ROLE_KEY);
+    const pendingItemRaw = localStorage.getItem(PENDING_NOTIFICATION_ITEM_KEY);
     if (!pendingIdRaw || pendingRole !== 'Employee') return;
 
     const pendingId = Number(pendingIdRaw);
     if (!Number.isFinite(pendingId)) {
       localStorage.removeItem(PENDING_NOTIFICATION_ID_KEY);
       localStorage.removeItem(PENDING_NOTIFICATION_ROLE_KEY);
+      localStorage.removeItem(PENDING_NOTIFICATION_ITEM_KEY);
       return;
     }
 
     const target = notifications.find((item) => item.id === pendingId);
-    if (!target) return;
+    let pendingItem: Notification | null = null;
+    if (!target && pendingItemRaw) {
+      try {
+        const parsed = JSON.parse(pendingItemRaw);
+        if (parsed && Number(parsed.id) === pendingId) {
+          pendingItem = parsed as Notification;
+        }
+      } catch {
+        pendingItem = null;
+      }
+    }
+
+    if (!target && !pendingItem) return;
 
     setActiveTab('received');
     const targetIdx = notifications.findIndex((item) => item.id === pendingId);
@@ -292,7 +346,22 @@ export function EmployeeNotifications() {
     setHighlightedNotificationId(pendingId);
     localStorage.removeItem(PENDING_NOTIFICATION_ID_KEY);
     localStorage.removeItem(PENDING_NOTIFICATION_ROLE_KEY);
-    openNotificationDetail(target);
+    localStorage.removeItem(PENDING_NOTIFICATION_ITEM_KEY);
+
+    const notificationToApply = target ?? pendingItem;
+    if (!notificationToApply) return;
+
+    if (!target && pendingItem) {
+      setNotifications((prev) => {
+        if (prev.some((item) => item.id === pendingItem!.id)) return prev;
+        return [pendingItem!, ...prev];
+      });
+    }
+
+    // Route pre-open should be immediate but should not force-open the detail modal.
+    if (!notificationToApply.read_at) {
+      void markAsRead(notificationToApply.id);
+    }
   }, [notifications]);
 
   useEffect(() => {
@@ -300,9 +369,32 @@ export function EmployeeNotifications() {
   }, [notifications, tryOpenPendingNotification]);
 
   useEffect(() => {
-    const handler = () => tryOpenPendingNotification();
-    window.addEventListener(OPEN_NOTIFICATION_EVENT, handler);
-    return () => window.removeEventListener(OPEN_NOTIFICATION_EVENT, handler);
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<PendingNotificationEventDetail>;
+      const detail = customEvent?.detail;
+
+      if (detail?.role === 'Employee' && detail.notification) {
+        const incoming = detail.notification;
+        setActiveTab('received');
+        setNotifications((prev) => {
+          const exists = prev.some((item) => item.id === incoming.id);
+          if (exists) {
+            return prev.map((item) => (item.id === incoming.id ? { ...item, ...incoming } : item));
+          }
+          return [incoming, ...prev];
+        });
+
+        if (!incoming.read_at) {
+          void markAsRead(incoming.id);
+        }
+        return;
+      }
+
+      tryOpenPendingNotification();
+    };
+
+    window.addEventListener(OPEN_NOTIFICATION_EVENT, handler as EventListener);
+    return () => window.removeEventListener(OPEN_NOTIFICATION_EVENT, handler as EventListener);
   }, [tryOpenPendingNotification]);
 
   // When the bell marks a notification as read, immediately reflect it in the received list.
@@ -734,10 +826,10 @@ export function EmployeeNotifications() {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
-                        className="text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        className="btn-icon btn-icon-delete um-icon-btn"
                         title="Delete notification"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -817,17 +909,17 @@ export function EmployeeNotifications() {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); restoreNotification(notification.id); }}
-                        className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-300"
+                        className="btn-icon btn-icon-view um-icon-btn"
                         title="Restore"
                       >
-                        <RotateCcw className="h-5 w-5" />
+                        <RotateCcw className="h-4 w-4" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); permanentlyDeleteNotification(notification.id); }}
-                        className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-300"
+                        className="btn-icon btn-icon-delete um-icon-btn"
                         title="Delete permanently"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

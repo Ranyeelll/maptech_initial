@@ -1147,7 +1147,7 @@ class CourseController extends Controller
             return response()->json(['message' => 'Enrollment not found'], 404);
         }
 
-        $enrollment->update(['locked' => true]);
+        $enrollment->update(['locked' => true, 'unlocked_until' => null]);
 
         return response()->json(['message' => 'Enrollment locked']);
     }
@@ -1160,6 +1160,7 @@ class CourseController extends Controller
         $request->validate([
             'duration_minutes' => 'nullable|integer|min:1',
             'expires_at' => 'nullable|date',
+            'permanent' => 'nullable|boolean',
         ]);
 
         $course = Course::findOrFail($courseId);
@@ -1178,12 +1179,16 @@ class CourseController extends Controller
             $until = \Carbon\Carbon::parse($request->input('expires_at'))->setTimezone('UTC');
         }
 
-        $data = ['locked' => false];
-        if ($until) {
-            $data['unlocked_until'] = $until;
+        if ($request->boolean('permanent') && !$until) {
+            // Persist a far-future timestamp so employee-side lock logic can
+            // reliably detect a manual permanent unlock.
+            $until = now()->addYears(100);
         }
 
-        $enrollment->update($data);
+        $enrollment->update([
+            'locked' => false,
+            'unlocked_until' => $until,
+        ]);
 
         return response()->json(['message' => 'Enrollment unlocked']);
     }

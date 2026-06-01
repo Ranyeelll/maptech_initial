@@ -4,6 +4,7 @@ import { Bell, Send, Eye, Trash2, Users, User, AlertCircle, X, MessageCircle, Ro
 import { safeArray, resolveImageUrl } from '../../utils/safe';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { useToast } from '../../components/ToastProvider';
+import { actionButtonClasses } from '../../utils/uiPalette';
 import { RichTextEditor, sanitizeHtml, RICH_CONTENT_STYLES } from '../../components/RichTextEditor';
 import InfoModal from '../../components/InfoModal';
 
@@ -109,6 +110,8 @@ export function InstructorNotifications() {
   const [announcementImages, setAnnouncementImages] = useState<File[]>([]);
   const [announcementImagePreviewUrls, setAnnouncementImagePreviewUrls] = useState<string[]>([]);
   const [previewModal, setPreviewModal] = useState<{open:boolean;recipientCount:number|null;recipients?:{id:number;fullname:string}[];error?:string}>({open:false,recipientCount:null});
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [adminFormData, setAdminFormData] = useState({ message: '', type: 'report' });
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
   const [listSearchQuery, setListSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(5);
@@ -573,11 +576,13 @@ export function InstructorNotifications() {
       quiz_reminder: 'Quiz Reminder',
     };
 
-    setIsSending(true);
-    try {
-      if (announcementTarget === 'admin') {
+    showConfirm('Send this announcement now?', async () => {
+      setIsSending(true);
+      try {
         await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
         const xsrfToken = getCookie('XSRF-TOKEN');
+
+      if (announcementTarget === 'admin') {
         const title = adminTypeLabels[announcementType] || 'Report';
 
         const res = await fetch('/api/instructor/notifications/notify-admin', {
@@ -591,7 +596,9 @@ export function InstructorNotifications() {
           },
           body: JSON.stringify({ message: announcementMessage, type: announcementType, title }),
         });
+
         const data = await res.json();
+
         if (res.ok) {
           pushToast('Sent Successfully', `Notification sent to ${data.recipients_count} admin(s)!`, 'success');
           closeAnnouncementModal();
@@ -602,11 +609,8 @@ export function InstructorNotifications() {
       } else if (announcementTarget === 'specific_employee') {
         if (!selectedEmployee) {
           pushToast('Missing Selection', 'Please select an employee', 'warning');
-          setIsSending(false);
           return;
         }
-        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
-        const xsrfToken = getCookie('XSRF-TOKEN');
         const title = announcementTitle.trim() || employeeTypeLabels[announcementType] || 'Announcement';
         const res = await fetch('/api/instructor/notifications/notify-employees', {
           method: 'POST',
@@ -631,11 +635,8 @@ export function InstructorNotifications() {
         // employees by department
         if (!selectedDeptId) {
           pushToast('Missing Selection', 'Please select a department', 'warning');
-          setIsSending(false);
           return;
         }
-        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
-        const xsrfToken = getCookie('XSRF-TOKEN');
         const title = announcementTitle.trim() || employeeTypeLabels[announcementType] || 'Announcement';
         const payload: any = { title, message: announcementMessage, type: announcementType, department_id: Number(selectedDeptId) };
         if (selectedSubdeptId) payload.subdepartment_id = Number(selectedSubdeptId);
@@ -666,6 +667,58 @@ export function InstructorNotifications() {
     } finally {
       setIsSending(false);
     }
+    });
+  };
+
+  const handleSendToAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!adminFormData.message.trim()) {
+      pushToast('Missing Message', 'Please write a message', 'warning');
+      return;
+    }
+
+    showConfirm('Send this message to admin now?', async () => {
+      setIsSending(true);
+      try {
+        await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
+        const xsrfToken = getCookie('XSRF-TOKEN');
+        const adminTypeLabels: Record<string, string> = {
+          report: 'Report',
+          feedback: 'Feedback',
+          issue: 'Issue',
+          suggestion: 'Suggestion',
+        };
+        const title = adminTypeLabels[adminFormData.type] || 'Report';
+
+        const res = await fetch('/api/instructor/notifications/notify-admin', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-XSRF-TOKEN': decodeURIComponent(xsrfToken || ''),
+          },
+          body: JSON.stringify({ ...adminFormData, title }),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          pushToast('Sent Successfully', `Notification sent to ${data.recipients_count} admin(s)!`, 'success');
+          setIsAdminModalOpen(false);
+          setAdminFormData({ message: '', type: 'report' });
+          fetchSentHistory();
+        } else {
+          pushToast('Failed', data.message || 'Failed to send notification', 'error');
+        }
+      } catch (err) {
+        console.error('Failed to send to admin:', err);
+        pushToast('Error', 'Failed to send notification', 'error');
+      } finally {
+        setIsSending(false);
+      }
+    });
   };
 
   const formatDate = (dateStr: string) => {
@@ -962,10 +1015,10 @@ export function InstructorNotifications() {
                       )}
                       <button
                         onClick={() => deleteNotification(notification.id)}
-                        className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-300"
+                        className="btn-icon btn-icon-delete um-icon-btn"
                         title="Delete"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -1035,10 +1088,10 @@ export function InstructorNotifications() {
                             e.stopPropagation();
                             deleteSentHistory(item.id);
                           }}
-                          className="text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400"
+                          className="btn-icon btn-icon-delete um-icon-btn"
                           title="Move to Recently Deleted"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
                     </tr>
@@ -1116,17 +1169,17 @@ export function InstructorNotifications() {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); restoreNotification(notification.id); }}
-                        className="text-slate-500 dark:text-slate-400 hover:text-green-600 dark:hover:text-green-300"
+                        className="btn-icon btn-icon-view um-icon-btn"
                         title="Restore"
                       >
-                        <RotateCcw className="h-5 w-5" />
+                        <RotateCcw className="h-4 w-4" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); permanentlyDeleteNotification(notification.id); }}
-                        className="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-300"
+                        className="btn-icon btn-icon-delete um-icon-btn"
                         title="Delete permanently"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -1358,6 +1411,66 @@ export function InstructorNotifications() {
                 </form>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send to Admin Modal */}
+      {isAdminModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setIsAdminModalOpen(false)}></div>
+          <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <button
+              onClick={() => setIsAdminModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Contact Admin</h3>
+            </div>
+
+            <form onSubmit={handleSendToAdmin} className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {['report', 'feedback', 'issue', 'suggestion'].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setAdminFormData({ ...adminFormData, type })}
+                    className={`py-2 px-3 rounded-lg text-sm font-medium capitalize transition-colors ${
+                      adminFormData.type === type
+                        ? 'bg-green-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                name="message"
+                rows={4}
+                required
+                value={adminFormData.message}
+                onChange={(e) => setAdminFormData({ ...adminFormData, message: e.target.value })}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                placeholder="Write your message to admin..."
+              />
+
+              <button
+                type="submit"
+                disabled={isSending || !adminFormData.message.trim()}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <Send className="h-4 w-4" />
+                {isSending ? 'Sending...' : 'Send to Admin'}
+              </button>
+            </form>
           </div>
         </div>
       )}
