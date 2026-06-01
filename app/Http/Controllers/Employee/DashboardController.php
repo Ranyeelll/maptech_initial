@@ -427,8 +427,18 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('module_id');
 
-        // Load all quiz_ids
+        // Load course-level final assessment quiz (no module_id)
+        $finalAssessmentQuiz = Quiz::where('course_id', $id)
+            ->whereNull('module_id')
+            ->where('quiz_type', 'final-assessment')
+            ->withCount('questions')
+            ->first();
+
+        // Load all quiz_ids (module quizzes + final assessment)
         $quizIds = $quizByModule->pluck('id');
+        if ($finalAssessmentQuiz) {
+            $quizIds = $quizIds->push($finalAssessmentQuiz->id);
+        }
 
         // Find which quizzes this employee has already passed
         $passedQuizIds = QuizAttempt::where('user_id', $user->id)
@@ -531,6 +541,25 @@ class DashboardController extends Controller
                 'email' => $course->instructor->email,
             ] : null,
             'modules' => $modules->values(),
+            'final_assessment_quiz' => $finalAssessmentQuiz ? (function () use ($finalAssessmentQuiz, $passedQuizIds, $bestAttempts) {
+                $hasPassed = isset($passedQuizIds[$finalAssessmentQuiz->id]);
+                $best = $bestAttempts->get($finalAssessmentQuiz->id);
+                return [
+                    'id' => $finalAssessmentQuiz->id,
+                    'title' => $finalAssessmentQuiz->title,
+                    'description' => $finalAssessmentQuiz->description,
+                    'pass_percentage' => $finalAssessmentQuiz->pass_percentage,
+                    'question_count' => $finalAssessmentQuiz->questions_count,
+                    'has_passed' => $hasPassed,
+                    'best_attempt' => $best ? [
+                        'score' => $best->score,
+                        'total_questions' => $best->total_questions,
+                        'percentage' => (float) $best->percentage,
+                        'passed' => $best->passed,
+                        'created_at' => $best->created_at,
+                    ] : null,
+                ];
+            })() : null,
         ]);
     }
 

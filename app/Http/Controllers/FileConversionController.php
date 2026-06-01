@@ -27,7 +27,11 @@ class FileConversionController extends Controller
     public function checkAvailability()
     {
         return response()->json([
-            'libreoffice_available' => $this->conversionService->isLibreOfficeAvailable(),
+            'libreoffice_available' => $this->conversionService->isLibreOfficeAvailable()
+                || $this->conversionService->isPowerPointAvailable(),
+            'engine'                => $this->conversionService->isPowerPointAvailable()
+                ? 'microsoft-office'
+                : ($this->conversionService->isLibreOfficeAvailable() ? 'libreoffice' : 'none'),
             'supported_conversions' => $this->conversionService->getSupportedConversions(),
         ]);
     }
@@ -504,11 +508,11 @@ class FileConversionController extends Controller
                 ], 404);
             }
 
-            // Check if PDF exists
+            // Check if a valid PDF already exists (>1 kB to avoid broken cached files)
             $pdfPath = pathinfo($fullPath, PATHINFO_DIRNAME).DIRECTORY_SEPARATOR.
                        pathinfo($fullPath, PATHINFO_FILENAME).'.pdf';
 
-            if (! file_exists($pdfPath)) {
+            if (! file_exists($pdfPath) || filesize($pdfPath) < 1024) {
                 // Convert
                 $result = $this->conversionService->pptxToPdf($fullPath, $pdfPath);
 

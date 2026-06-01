@@ -24,6 +24,8 @@ interface PresentationViewerProps {
   fileName?: string;
   fileSize?: string;
   className?: string;
+  /** Compact mode: smaller header, height-capped preview — for embedding inside lesson cards */
+  compact?: boolean;
 }
 
 interface SlideData {
@@ -46,7 +48,12 @@ function isValidImageFile(filename: string): boolean {
   return ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext);
 }
 
-export default function PresentationViewer({ url, title, fileName, className = '' }: PresentationViewerProps) {
+// Fixed internal render resolution — slides always render at this size, then CSS-scaled to fit
+// the container. Decouples display size from render quality and prevents re-render on every resize.
+const RENDER_WIDTH = 1280;
+const RENDER_HEIGHT = 720; // 16:9
+
+export default function PresentationViewer({ url, title, fileName, className = '', compact = false }: PresentationViewerProps) {
   const displayName = fileName || title || 'Presentation';
 
   // PDF conversion (server-side via LibreOffice)
@@ -164,8 +171,8 @@ export default function PresentationViewer({ url, title, fileName, className = '
     host.innerHTML = '';
 
     const previewer = initPptxPreview(host, {
-      width,
-      height,
+      width: RENDER_WIDTH,
+      height: RENDER_HEIGHT,
       mode: 'slide',
     });
 
@@ -203,21 +210,22 @@ export default function PresentationViewer({ url, title, fileName, className = '
 
       const arrayBuffer = await res.arrayBuffer();
       pptxBufferRef.current = arrayBuffer;
-      await renderPptxIntoHost(previewHost, arrayBuffer, previewDimensions.width, previewDimensions.height);
+      await renderPptxIntoHost(previewHost, arrayBuffer, RENDER_WIDTH, RENDER_HEIGHT);
       setLoading(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to render presentation');
       setLoading(false);
     }
-  }, [previewDimensions.height, previewDimensions.width, renderPptxIntoHost, url]);
+  }, [renderPptxIntoHost, url]);
 
   useEffect(() => {
     const host = pptxPreviewRef.current;
     const arrayBuffer = pptxBufferRef.current;
     if (!host || !arrayBuffer || loading || error) return;
 
-    void renderPptxIntoHost(host, arrayBuffer, previewDimensions.width, previewDimensions.height);
-  }, [error, loading, previewDimensions.height, previewDimensions.width, renderPptxIntoHost]);
+    // Re-render uses fixed resolution — no re-render on every container resize
+    void renderPptxIntoHost(host, arrayBuffer, RENDER_WIDTH, RENDER_HEIGHT);
+  }, [error, loading, renderPptxIntoHost, isPresentationMode, compact]);
 
   // On mount: try server conversion first, then fall back
   useEffect(() => {
@@ -226,24 +234,13 @@ export default function PresentationViewer({ url, title, fileName, className = '
 
     (async () => {
       try {
-        const availabilityRes = await fetch('/api/convert/availability', { credentials: 'include' });
-        const availabilityData = await availabilityRes.json();
-        const available = !!availabilityData?.libreoffice_available;
-
-        if (cancelled) return;
-        setIsLibreOfficeAvailable(available);
-
-        if (available) {
-          const ok = await convertToPdf();
-          if (!ok && !cancelled) await parsePptxClientSide();
-        } else {
-          await parsePptxClientSide();
-        }
+        // Attempt server-side PDF conversion directly — skip the availability pre-check.
+        // If LibreOffice is installed, this gives pixel-perfect rendering via PDFViewer.
+        // If not, the request fails fast and we fall back to client-side rendering.
+        const ok = await convertToPdf();
+        if (!ok && !cancelled) await parsePptxClientSide();
       } catch {
-        if (!cancelled) {
-          setIsLibreOfficeAvailable(false);
-          await parsePptxClientSide();
-        }
+        if (!cancelled) await parsePptxClientSide();
       }
     })();
 
@@ -320,6 +317,25 @@ export default function PresentationViewer({ url, title, fileName, className = '
 
   // ─── If PDF conversion succeeded: use PDFViewer which handles "Start Presentation" itself ───
   if (pdfUrl) {
+    if (compact) {
+      return (
+        <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ${className}`}>
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-200 dark:border-slate-700">
+            <Presentation className="w-4 h-4 text-orange-500 flex-shrink-0" />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate flex-1">{displayName}</span>
+            <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full flex-shrink-0">PPTX → PDF ✓</span>
+            <button onClick={handleDownload} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 ml-1" title="Download original PPTX">
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+          </div>
+          <div className="overflow-hidden" style={{ maxHeight: '320px' }}>
+            <Suspense fallback={<div className="p-4 text-sm text-slate-500">Loading PDF preview…</div>}>
+              <PDFViewer url={pdfUrl} title={displayName} fileName={displayName.replace(/\.pptx?$/i, '.pdf')} showConvertButton={false} />
+            </Suspense>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className={className}>
         <div className="mb-2 flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-800 rounded-t-xl border border-b-0 border-slate-200 dark:border-slate-700">
@@ -361,15 +377,25 @@ export default function PresentationViewer({ url, title, fileName, className = '
           <div className="flex-1 p-4 pt-16">
             <div className="h-full flex items-center justify-center">
                 <div ref={previewShellRef} className="w-full h-full flex items-center justify-center">
-                <div
-                  ref={pptxPreviewRef}
-                    className="overflow-hidden rounded-xl bg-white dark:bg-slate-950 shadow-xl mx-auto"
-                    style={{
-                      width: `${previewDimensions.width}px`,
-                      height: `${previewDimensions.height}px`,
-                    }}
-                />
-              </div>
+                  {(() => {
+                    const scale = previewDimensions.width / RENDER_WIDTH;
+                    const scaledHeight = Math.round(RENDER_HEIGHT * scale);
+                    return (
+                      <div className="overflow-hidden rounded-xl mx-auto relative" style={{ width: `${previewDimensions.width}px`, height: `${scaledHeight}px` }}>
+                        <div
+                          ref={pptxPreviewRef}
+                          className="bg-white dark:bg-slate-950 shadow-xl absolute top-0 left-0"
+                          style={{
+                            width: `${RENDER_WIDTH}px`,
+                            height: `${RENDER_HEIGHT}px`,
+                            transform: `scale(${scale})`,
+                            transformOrigin: 'top left',
+                          }}
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
             </div>
           </div>
 
@@ -389,6 +415,98 @@ export default function PresentationViewer({ url, title, fileName, className = '
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // ─── COMPACT VIEW (embedded inside lesson cards / course management) ───
+  if (compact) {
+    const displayScale = previewDimensions.width / RENDER_WIDTH;
+    const displayHeight = Math.round(RENDER_HEIGHT * displayScale);
+    return (
+      <div ref={containerRef} className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ${className}`}>
+        {/* Compact header */}
+        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-200 dark:border-slate-700">
+          <Presentation className="w-4 h-4 text-orange-500 flex-shrink-0" />
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate flex-1">{displayName}</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+            <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full">PPTX</span>
+            {slides.length > 0 && <span className="text-xs text-slate-400 dark:text-slate-500">{slides.length} slide{slides.length !== 1 ? 's' : ''}</span>}
+            {conversionStatus === 'converting' && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />}
+            <button
+              onClick={startPresentation}
+              disabled={loading || (!!error && !slides.length)}
+              className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Start full-screen presentation"
+            >
+              <Monitor className="w-3.5 h-3.5 text-blue-500" />
+            </button>
+            <button onClick={handleDownload} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700" title="Download PPTX">
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Preview — capped height, CSS-scaled for quality */}
+        <div className="relative bg-slate-100 dark:bg-slate-900" style={{ maxHeight: '300px', overflow: 'hidden' }}>
+          <div ref={previewShellRef} className="p-3">
+            <div
+              className="overflow-hidden rounded-lg mx-auto relative"
+              style={{
+                width: `${previewDimensions.width}px`,
+                height: `${displayHeight}px`,
+              }}
+            >
+              <div
+                ref={pptxPreviewRef}
+                className="bg-white dark:bg-slate-950 absolute top-0 left-0"
+                style={{
+                  width: `${RENDER_WIDTH}px`,
+                  height: `${RENDER_HEIGHT}px`,
+                  transform: `scale(${displayScale})`,
+                  transformOrigin: 'top left',
+                }}
+              />
+            </div>
+          </div>
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+            </div>
+          )}
+          {error && !loading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-sm">
+              <AlertCircle className="w-10 h-10 text-red-400" />
+              <button onClick={handleDownload} className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-white text-sm flex items-center gap-1.5">
+                <Download className="w-4 h-4" />Download &amp; Open in PowerPoint
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Slide navigation */}
+        {slides.length > 1 && !loading && !error && (
+          <div className="flex items-center justify-center gap-3 px-3 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <button onClick={prevSlide} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+              <ChevronLeft className="w-4 h-4 text-slate-500" />
+            </button>
+            <span className="text-xs text-slate-500">{slides.length} slides — use arrows or Start Presentation to navigate</span>
+            <button onClick={nextSlide} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            </button>
+          </div>
+        )}
+
+        {/* Quality notice when pptx-preview fallback is used */}
+        {conversionStatus === 'failed' && !pdfUrl && (
+          <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-800">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Browser preview may not match the original exactly.  
+              <button onClick={handleDownload} className="underline font-medium">Download</button>
+               to open in Microsoft PowerPoint for full fidelity.
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -444,14 +562,32 @@ export default function PresentationViewer({ url, title, fileName, className = '
           </div>
         )}
         <div ref={previewShellRef} className="p-4">
-          <div
-            ref={pptxPreviewRef}
-            className="overflow-hidden rounded-lg bg-white dark:bg-slate-950 shadow-xl mx-auto"
-            style={{
-              width: `${previewDimensions.width}px`,
-              height: `${previewDimensions.height}px`,
-            }}
-          />
+          {
+            (() => {
+              const displayScale = previewDimensions.width / RENDER_WIDTH;
+              const displayHeight = Math.round(RENDER_HEIGHT * displayScale);
+              return (
+                <div
+                  className="overflow-hidden rounded-lg mx-auto relative"
+                  style={{
+                    width: `${previewDimensions.width}px`,
+                    height: `${displayHeight}px`,
+                  }}
+                >
+                  <div
+                    ref={pptxPreviewRef}
+                    className="bg-white dark:bg-slate-950 shadow-xl absolute top-0 left-0"
+                    style={{
+                      width: `${RENDER_WIDTH}px`,
+                      height: `${RENDER_HEIGHT}px`,
+                      transform: `scale(${displayScale})`,
+                      transformOrigin: 'top left',
+                    }}
+                  />
+                </div>
+              );
+            })()
+          }
         </div>
 
         {loading && (

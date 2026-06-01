@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -22,8 +22,10 @@ import {
   GripVertical,
   Users,
   UserMinus,
+  Award,
 } from 'lucide-react';
 import { RichTextEditor, sanitizeHtml, RICH_CONTENT_STYLES } from '../../components/RichTextEditor';
+const PresentationViewer = lazy(() => import('../../components/PresentationViewer'));
 import YouTubePlayer from '../../components/YouTubePlayer';
 import UnlockModuleModal from '../../components/UnlockModuleModal';
 import DepartmentSelectModal from '../../components/DepartmentSelectModal';
@@ -228,6 +230,69 @@ function AddQuizForm({ moduleId, lessonId = null, courseId, onCreated, onCancel,
   );
 }
 
+function FinalAssessmentForm({ onCreated, onCancel }: {
+  onCreated: (title: string, description: string, passPercent: number) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState('Final Assessment');
+  const [desc, setDesc] = useState('');
+  const [passPercent, setPassPercent] = useState(70);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!title.trim()) { setErr('Title is required.'); return; }
+    setSaving(true);
+    setErr(null);
+    try {
+      await onCreated(title.trim(), desc.trim(), passPercent);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg space-y-3">
+      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase tracking-wide">New Final Assessment</p>
+      {err && <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{err}</p>}
+      <input
+        type="text"
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        placeholder="Assessment title"
+        className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md py-1.5 px-3 text-sm focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
+      />
+      <input
+        type="text"
+        value={desc}
+        onChange={e => setDesc(e.target.value)}
+        placeholder="Description (optional)"
+        className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md py-1.5 px-3 text-sm focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
+      />
+      <div className="flex items-center gap-3">
+        <label className="text-xs font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">Pass Percentage</label>
+        <input
+          type="number" min={1} max={100} value={passPercent}
+          onChange={e => setPassPercent(Number(e.target.value))}
+          className="w-20 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-md py-1.5 px-2 text-sm text-center focus:ring-2 focus:ring-amber-500"
+        />
+        <span className="text-xs text-slate-500 dark:text-slate-400">% to complete course</span>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          {saving ? 'Creating...' : 'Create Final Assessment'}
+        </button>
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50 dark:text-red-300 dark:border-red-700 dark:hover:bg-red-900/20">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Unlock modal rendered outside main markup
 function UnlockModalRenderer({
   course,
@@ -420,6 +485,8 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
 
   // Quiz state — keyed by module_id (now supports multiple quizzes per module)
   const [quizByModule, setQuizByModule] = useState<Record<number, QuizSummary[]>>({});
+  const [finalAssessmentQuizzes, setFinalAssessmentQuizzes] = useState<QuizSummary[]>([]);
+  const [addingFinalAssessment, setAddingFinalAssessment] = useState(false);
   const [quizzesLoading, setQuizzesLoading] = useState(false);
   const [courseQuizCount, setCourseQuizCount] = useState<number>(0);
   const [addingQuizForModule, setAddingQuizForModule] = useState<string | number | null>(null);
@@ -479,7 +546,7 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
   const editLessonFileRef = useRef<HTMLInputElement>(null);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'modules' | 'students'>('modules');
+  const [activeTab, setActiveTab] = useState<'modules' | 'quizzes' | 'students'>('modules');
   const [highlightUserName, setHighlightUserName] = useState<string | null>(null);
 
   // Enrollment state
@@ -832,14 +899,19 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
         // Total quizzes in this course (including course-level quizzes)
         setCourseQuizCount(normalizedQuizzes.length);
         const byModule: Record<number, QuizSummary[]> = {};
+        const courseLevelQuizzes: QuizSummary[] = [];
         normalizedQuizzes.forEach((quiz) => {
           const q = { ...quiz, quiz_type: inferQuizType(quiz) };
-          if (q.module_id !== null) {
+          if (q.module_id !== null && q.module_id !== undefined) {
             if (!byModule[q.module_id]) byModule[q.module_id] = [];
             byModule[q.module_id].push(q);
+          } else {
+            // Course-level quiz (no module) — treated as final assessment
+            courseLevelQuizzes.push({ ...q, quiz_type: 'final-assessment' });
           }
         });
         setQuizByModule(byModule);
+        setFinalAssessmentQuizzes(courseLevelQuizzes);
 
         pendingLessonAssignments.forEach(({ quizId, lessonId }) => {
           if (persistedLessonQuizIdsRef.current.has(quizId)) return;
@@ -1295,6 +1367,31 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
       setDeletingQuizId(null);
     }
     });
+  };
+
+  const handleCreateFinalAssessment = async (title: string, description: string, passPercent: number) => {
+    try {
+      const token = await getXsrfToken();
+      const res = await fetch(`${API_BASE}/${apiPrefix}/courses/${courseId}/quizzes`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim() || null,
+          pass_percentage: passPercent,
+          quiz_type: 'final-assessment',
+          module_id: null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || 'Failed to create final assessment.');
+      setAddingFinalAssessment(false);
+      await loadQuizzes();
+      if (onManageQuiz) onManageQuiz(data.id, courseId);
+    } catch (e: any) {
+      alert(e.message);
+    }
   };
 
   // ─── ENROLLMENT HANDLERS ──────────────────────────────────────────────────
@@ -1939,6 +2036,17 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
                                           <iframe src={lesson.content_url} className="w-full h-96 rounded-md border border-slate-300" title={lesson.title} />
                                         </div>
                                       )}
+                                      {lesson.content_url && lesson.file_type === 'presentation' && (
+                                        <div className="px-4 pb-3 pt-1 border-t border-slate-200">
+                                          <Suspense fallback={<div className="p-3 text-sm text-slate-500">Loading presentation...</div>}>
+                                            <PresentationViewer
+                                              url={lesson.content_url}
+                                              title={lesson.title}
+                                              compact
+                                            />
+                                          </Suspense>
+                                        </div>
+                                      )}
                                     </>
                                   )}
                                 </div>
@@ -2229,6 +2337,58 @@ export function InstructorCourseDetail({ courseId, onBack, onManageQuiz, apiPref
             Modules with a quiz gate the next module — employees must pass before proceeding.
           </div>
         )}
+
+        {/* ── Final Assessment Section ── */}
+        <div className="mx-6 mb-6 mt-2">
+          <div className="rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center flex-shrink-0">
+                <Award className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Final Assessment</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Taken after all modules — determines if the employee passes the course</p>
+              </div>
+            </div>
+
+            {finalAssessmentQuizzes.length > 0 ? (
+              <div className="space-y-2">
+                {finalAssessmentQuizzes.map((fa) => (
+                  <div key={fa.id} className="bg-white dark:bg-slate-800 rounded-lg border border-amber-200 dark:border-amber-700 p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Award className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{fa.title}</p>
+                        {fa.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{fa.description}</p>}
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{fa.question_count} question{fa.question_count !== 1 ? 's' : ''} &middot; Pass {fa.pass_percentage}% to complete course</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => openQuizInManager(fa.id)} className="p-1.5 text-green-500 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/25 rounded" title="Add/edit questions">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteQuiz(fa.id)} disabled={deletingQuizId === fa.id} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-100 rounded disabled:opacity-40">
+                        {deletingQuizId === fa.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : addingFinalAssessment ? (
+              <FinalAssessmentForm
+                onCreated={handleCreateFinalAssessment}
+                onCancel={() => setAddingFinalAssessment(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setAddingFinalAssessment(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 dark:border-amber-600 rounded-lg text-sm font-medium text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/30 transition-colors"
+              >
+                <Plus className="h-4 w-4" /> Add Final Assessment
+              </button>
+            )}
+          </div>
+        </div>
       </div>
       )}
 

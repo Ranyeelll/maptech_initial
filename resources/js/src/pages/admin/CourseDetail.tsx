@@ -1130,6 +1130,7 @@ export function CourseDetail({ courseId, onBack, onManageQuiz }: CourseDetailPro
                                               <PresentationViewer
                                                 url={lesson.content_url}
                                                 title={lesson.title}
+                                                compact
                                               />
                                             </Suspense>
                                           </div>

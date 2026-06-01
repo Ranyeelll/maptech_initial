@@ -93,6 +93,100 @@ class FileConversionService
     }
 
     /**
+     * Check if Microsoft PowerPoint (Office) is available for COM automation.
+     * Only applicable on Windows with Office installed and PHP com_dotnet extension enabled.
+     */
+    public function isPowerPointAvailable(): bool
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return false;
+        }
+
+        if (! extension_loaded('com_dotnet')) {
+            return false;
+        }
+
+        // Check for common PowerPoint executable paths
+        $paths = [
+            'C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE',
+            'C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\POWERPNT.EXE',
+            'C:\\Program Files\\Microsoft Office\\Office16\\POWERPNT.EXE',
+            'C:\\Program Files (x86)\\Microsoft Office\\Office16\\POWERPNT.EXE',
+            'C:\\Program Files\\Microsoft Office\\root\\Office15\\POWERPNT.EXE',
+            'C:\\Program Files (x86)\\Microsoft Office\\root\\Office15\\POWERPNT.EXE',
+        ];
+
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Convert PPTX to PDF using Microsoft PowerPoint COM automation.
+     * Produces pixel-perfect output using the actual PowerPoint rendering engine.
+     */
+    public function pptxToPdfViaOffice(string $inputPath, string $outputPath): array
+    {
+        if (! extension_loaded('com_dotnet')) {
+            return ['success' => false, 'error' => 'PHP com_dotnet extension is not enabled.'];
+        }
+
+        if (! file_exists($inputPath)) {
+            return ['success' => false, 'error' => 'Input file does not exist.'];
+        }
+
+        // Ensure paths are absolute and use Windows-style separators
+        $inputPath  = str_replace('/', '\\', realpath($inputPath));
+        $outputPath = str_replace('/', '\\', $outputPath);
+
+        // Make sure output directory exists
+        $outDir = dirname($outputPath);
+        if (! is_dir($outDir)) {
+            mkdir($outDir, 0755, true);
+        }
+
+        $ppt = null;
+        $presentation = null;
+
+        try {
+            Log::info('PPTX→PDF via PowerPoint COM', [
+                'input'  => $inputPath,
+                'output' => $outputPath,
+            ]);
+
+            $ppt = new \COM('PowerPoint.Application');
+            $ppt->Visible = false;
+
+            // Open(Filename, ReadOnly, Untitled, WithWindow)
+            $presentation = $ppt->Presentations->Open($inputPath, true, false, false);
+
+            // 32 = ppSaveAsPDF
+            $presentation->SaveAs($outputPath, 32);
+
+            // Verify the output was written
+            if (! file_exists($outputPath)) {
+                throw new \RuntimeException('PowerPoint did not write the PDF file.');
+            }
+
+            return ['success' => true, 'output_path' => $outputPath];
+        } catch (\Throwable $e) {
+            Log::error('PowerPoint COM conversion failed', ['error' => $e->getMessage()]);
+
+            return ['success' => false, 'error' => 'PowerPoint COM conversion failed: '.$e->getMessage()];
+        } finally {
+            // Always close PowerPoint cleanly
+            try { if ($presentation) { $presentation->Close(); } } catch (\Throwable) {}
+            try { if ($ppt)          { $ppt->Quit(); }          } catch (\Throwable) {}
+            $presentation = null;
+            $ppt = null;
+        }
+    }
+
+    /**
      * Kill any running LibreOffice processes (Windows-specific fix).
      */
     protected function killRunningLibreOfficeProcesses(): void
@@ -298,10 +392,28 @@ class FileConversionService
             ];
         }
 
+        // Determine output path
+        if (! $outputPath) {
+            $outputPath = pathinfo($inputPath, PATHINFO_DIRNAME).DIRECTORY_SEPARATOR.
+                          pathinfo($inputPath, PATHINFO_FILENAME).'.pdf';
+        }
+
+        // ── Try PowerPoint COM first (Windows + Office installed) — pixel-perfect ──
+        if (PHP_OS_FAMILY === 'Windows' && $this->isPowerPointAvailable()) {
+            $result = $this->pptxToPdfViaOffice($inputPath, $outputPath);
+            if ($result['success']) {
+                return $result;
+            }
+            // Log and fall through to LibreOffice
+            Log::warning('PowerPoint COM conversion failed, trying LibreOffice', [
+                'error' => $result['error'] ?? 'unknown',
+            ]);
+        }
+
         if (! $this->isLibreOfficeAvailable()) {
             return [
                 'success' => false,
-                'error' => 'LibreOffice is not installed or not accessible.',
+                'error' => 'Neither Microsoft PowerPoint COM nor LibreOffice is available for conversion.',
             ];
         }
 
@@ -368,12 +480,6 @@ class FileConversionService
                 ];
             }
 
-            // Determine final output path
-            if (! $outputPath) {
-                $outputPath = pathinfo($inputPath, PATHINFO_DIRNAME).DIRECTORY_SEPARATOR.
-                              pathinfo($inputPath, PATHINFO_FILENAME).'.pdf';
-            }
-
             // Move output file to final destination
             if (! copy($tempOutputPath, $outputPath)) {
                 $this->cleanupDirectory($workDir);
@@ -412,6 +518,8 @@ class FileConversionService
      */
     public function getSupportedConversions(): array
     {
+        $pptxToPdfAvailable = $this->isPowerPointAvailable() || $this->isLibreOfficeAvailable();
+
         return [
             'pdf_to_pptx' => [
                 'name' => 'PDF to PowerPoint',
@@ -423,7 +531,8 @@ class FileConversionService
                 'name' => 'PowerPoint to PDF',
                 'from' => ['pptx', 'ppt'],
                 'to' => 'pdf',
-                'available' => $this->isLibreOfficeAvailable(),
+                'available' => $pptxToPdfAvailable,
+                'engine'    => $this->isPowerPointAvailable() ? 'microsoft-office' : ($this->isLibreOfficeAvailable() ? 'libreoffice' : 'none'),
             ],
         ];
     }

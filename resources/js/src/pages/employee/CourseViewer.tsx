@@ -137,6 +137,7 @@ interface CourseData {
     email: string;
   } | null;
   modules: ModuleData[];
+  final_assessment_quiz: QuizData | null;
 }
 
 interface CourseViewerProps {
@@ -167,6 +168,15 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
   const [selectedSentence, setSelectedSentence] = useState('');
   const [selectedSentenceDefinition, setSelectedSentenceDefinition] = useState('');
   const [showSentenceModal, setShowSentenceModal] = useState(false);
+
+  // Final assessment state
+  const [finalAssessmentQuiz, setFinalAssessmentQuiz] = useState<QuizData | null>(null);
+  const [finalAssessmentState, setFinalAssessmentState] = useState<null | 'loading' | 'taking' | 'submitted'>(null);
+  const [finalAssessmentQuestions, setFinalAssessmentQuestions] = useState<QuizQuestion[]>([]);
+  const [finalAssessmentAnswers, setFinalAssessmentAnswers] = useState<Record<number, number>>({});
+  const [finalAssessmentResult, setFinalAssessmentResult] = useState<QuizResult | null>(null);
+  const [finalAssessmentSubmitting, setFinalAssessmentSubmitting] = useState(false);
+  const [showCongratulatoryModal, setShowCongratulatoryModal] = useState(false);
   const [, setViewedLessons] = useState<Set<number>>(new Set());
   const [, setViewedModules] = useState<Set<number>>(new Set());
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
@@ -245,6 +255,7 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
       if (!res.ok) throw new Error('Failed to load course');
       const data = await res.json();
       setCourse(data);
+      setFinalAssessmentQuiz(data.final_assessment_quiz ?? null);
       const mods: ModuleData[] = safeArray<ModuleData>(data.modules);
       setModules(mods);
       setCurrentModule(prev => {
@@ -1184,6 +1195,60 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
     }
   };
 
+  const startFinalAssessment = async () => {
+    if (!finalAssessmentQuiz) return;
+    setFinalAssessmentState('loading');
+    setFinalAssessmentAnswers({});
+    setFinalAssessmentResult(null);
+    try {
+      const xsrf = await getXsrfToken();
+      const res = await fetch(`${API_BASE}/employee/quizzes/${finalAssessmentQuiz.id}/questions`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf },
+      });
+      if (!res.ok) throw new Error('Failed to load final assessment questions.');
+      const data = await res.json();
+      setFinalAssessmentQuestions(safeArray<QuizQuestion>(data.questions ?? data));
+      setFinalAssessmentState('taking');
+    } catch (e: any) {
+      setFinalAssessmentState(null);
+      alert(e.message);
+    }
+  };
+
+  const submitFinalAssessment = async () => {
+    if (!finalAssessmentQuiz) return;
+    setFinalAssessmentSubmitting(true);
+    try {
+      const xsrf = await getXsrfToken();
+      const answers = Object.entries(finalAssessmentAnswers).map(([qId, aId]) => ({
+        question_id: Number(qId),
+        answer_id: aId,
+      }));
+      const res = await fetch(`${API_BASE}/employee/quizzes/${finalAssessmentQuiz.id}/submit`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrf },
+        body: JSON.stringify({ answers }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || 'Failed to submit final assessment.');
+      setFinalAssessmentResult(data);
+      setFinalAssessmentState('submitted');
+      if (data.passed) {
+        setShowCongratulatoryModal(true);
+        if (congratulatedStorageKey) {
+          try { localStorage.setItem(congratulatedStorageKey, '1'); } catch { /* ignore */ }
+        }
+      }
+      await loadCourse();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setFinalAssessmentSubmitting(false);
+    }
+  };
+
   const canGoPrevious = showQuiz || currentLessonIndex > 0 || currentModuleIndex > 0;
   const canGoNext = (() => {
     if (currentLesson && currentLessonIndex < moduleLessons.length - 1) return true;
@@ -1277,6 +1342,54 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 View Certificates
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Assessment Congratulatory Modal */}
+      {showCongratulatoryModal && (
+        <div className="fixed inset-0 z-[145] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" aria-hidden="true" />
+          <div className="relative w-full max-w-lg rounded-2xl border border-amber-300/30 bg-slate-900/97 p-8 text-slate-100 shadow-2xl text-center">
+            <button
+              type="button"
+              onClick={() => setShowCongratulatoryModal(false)}
+              className="absolute right-3 top-3 rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-white"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/20 ring-2 ring-amber-400/40">
+              <Trophy className="h-10 w-10 text-amber-400" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-white mb-2">🎉 Congratulations!</h2>
+            <p className="text-base text-slate-200 mb-1">
+              You've successfully completed
+            </p>
+            <p className="text-lg font-bold text-amber-300 mb-4">{course?.title}</p>
+            <p className="text-sm text-slate-400 mb-8">
+              Your certificate is ready. You can preview or download it from the Certificates page.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCongratulatoryModal(false);
+                  if (onViewCertificates) onViewCertificates();
+                  else window.location.assign(`${window.location.pathname}?page=certificates`);
+                }}
+                className="rounded-xl bg-amber-500 hover:bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg"
+              >
+                View Certificate
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCongratulatoryModal(false)}
+                className="rounded-xl border border-slate-600 px-6 py-3 text-sm font-medium text-slate-300 hover:bg-white/10"
+              >
+                Continue Learning
               </button>
             </div>
           </div>
@@ -1540,6 +1653,95 @@ export function CourseViewer({ courseId, onBack, onViewCertificates }: CourseVie
                 )}
               </div>
             )}
+
+            {/* Final Assessment Section */}
+            {!currentLesson && !showQuiz && finalAssessmentQuiz && (() => {
+              const allModulesPassed = modules.length > 0 && modules.every(m => !m.quiz || m.quiz.has_passed);
+              if (!allModulesPassed) return null;
+              return (
+                <div className="mt-10 border-t-2 border-amber-300 dark:border-amber-600 pt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center flex-shrink-0">
+                      <Trophy className="h-5 w-5 text-amber-600 dark:text-amber-300" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Final Assessment</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Complete this assessment to finish the course</p>
+                    </div>
+                  </div>
+
+                  {finalAssessmentState === null && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-5">
+                      <p className="text-sm text-amber-900 dark:text-amber-200 mb-1 font-semibold">{finalAssessmentQuiz.title}</p>
+                      {finalAssessmentQuiz.description && <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">{finalAssessmentQuiz.description}</p>}
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">{finalAssessmentQuiz.question_count} question{finalAssessmentQuiz.question_count !== 1 ? 's' : ''} · Pass {finalAssessmentQuiz.pass_percentage}% to complete the course</p>
+                      {finalAssessmentQuiz.has_passed ? (
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-semibold text-sm">
+                          <CheckCircle className="h-5 w-5" /> You passed! Course completed.
+                        </div>
+                      ) : (
+                        <button onClick={startFinalAssessment} className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg">
+                          Start Final Assessment
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {finalAssessmentState === 'loading' && (
+                    <div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Loading questions...</div>
+                  )}
+
+                  {finalAssessmentState === 'taking' && (
+                    <div className="space-y-6">
+                      {finalAssessmentQuestions.map((q, qi) => (
+                        <div key={q.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100 mb-3">{qi + 1}. {q.question}</p>
+                          <div className="space-y-2">
+                            {safeArray(q.answers).map((ans: any) => (
+                              <label key={ans.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-transparent hover:border-amber-300 dark:hover:border-amber-600 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`fa-q-${q.id}`}
+                                  value={ans.id}
+                                  checked={finalAssessmentAnswers[q.id] === ans.id}
+                                  onChange={() => setFinalAssessmentAnswers(prev => ({ ...prev, [q.id]: ans.id }))}
+                                  className="accent-amber-600"
+                                />
+                                <span className="text-sm text-slate-800 dark:text-slate-200">{ans.answer}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={submitFinalAssessment}
+                        disabled={finalAssessmentSubmitting || Object.keys(finalAssessmentAnswers).length < finalAssessmentQuestions.length}
+                        className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl"
+                      >
+                        {finalAssessmentSubmitting ? <><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Submitting...</> : 'Submit Final Assessment'}
+                      </button>
+                    </div>
+                  )}
+
+                  {finalAssessmentState === 'submitted' && finalAssessmentResult && (
+                    <div className={`rounded-xl p-6 border ${finalAssessmentResult.passed ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'}`}>
+                      <div className="flex items-center gap-3 mb-2">
+                        {finalAssessmentResult.passed
+                          ? <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                          : <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />}
+                        <p className="text-lg font-bold">{finalAssessmentResult.passed ? 'Congratulations! You passed!' : 'Not quite — keep trying!'}</p>
+                      </div>
+                      <p className="text-sm mb-4">Score: {finalAssessmentResult.score}/{finalAssessmentResult.total_questions} ({Math.round(finalAssessmentResult.percentage)}%) · Pass mark: {finalAssessmentResult.pass_percentage}%</p>
+                      {!finalAssessmentResult.passed && (
+                        <button onClick={startFinalAssessment} className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg">
+                          Retry Assessment
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Navigation Buttons */}
             {(currentLesson || showQuiz) && (

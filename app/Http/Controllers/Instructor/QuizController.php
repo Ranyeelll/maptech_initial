@@ -239,33 +239,26 @@ class QuizController extends Controller
         ]);
 
         $quiz = Quiz::create([
-            'course_id' => $courseId,
-            'module_id' => $validated['module_id'] ?? null,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
+            'course_id'       => $courseId,
+            'module_id'       => $validated['module_id'] ?? null,
+            'title'           => $validated['title'],
+            'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
-        ];
-
-        if (Schema::hasColumn('quizzes', 'lesson_id')) {
-            $createData['lesson_id'] = $validated['lesson_id'] ?? null;
-        }
-        if (Schema::hasColumn('quizzes', 'quiz_type')) {
-            $createData['quiz_type'] = $validated['quiz_type'] ?? 'regular';
-        }
-
-        $quiz = Quiz::create($createData);
+            'lesson_id'       => $validated['lesson_id'] ?? null,
+            'quiz_type'       => $validated['quiz_type'] ?? 'regular',
+        ]);
 
         return response()->json([
-            'id' => $quiz->id,
-            'title' => $quiz->title,
-            'description' => $quiz->description,
+            'id'             => $quiz->id,
+            'title'          => $quiz->title,
+            'description'    => $quiz->description,
             'pass_percentage' => $quiz->pass_percentage,
-            'course_id'       => $quiz->course_id,
-            'module_id'       => $quiz->module_id,
-            'lesson_id'       => $quiz->lesson_id,
-            'quiz_type'       => $quiz->quiz_type,
-            'question_count'  => 0,
-            'created_at'      => $quiz->created_at,
+            'course_id'      => $quiz->course_id,
+            'module_id'      => $quiz->module_id,
+            'lesson_id'      => $quiz->lesson_id,
+            'quiz_type'      => $quiz->quiz_type,
+            'question_count' => 0,
+            'created_at'     => $quiz->created_at,
         ], 201);
     }
 
@@ -283,33 +276,26 @@ class QuizController extends Controller
         ]);
 
         $quiz = Quiz::create([
-            'course_id' => $module->course_id,
-            'module_id' => $moduleId,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
+            'course_id'       => $module->course_id,
+            'module_id'       => $moduleId,
+            'title'           => $validated['title'],
+            'description'     => $validated['description'] ?? null,
             'pass_percentage' => $validated['pass_percentage'] ?? 70,
-        ];
-
-        if (Schema::hasColumn('quizzes', 'lesson_id')) {
-            $createData['lesson_id'] = $validated['lesson_id'] ?? null;
-        }
-        if (Schema::hasColumn('quizzes', 'quiz_type')) {
-            $createData['quiz_type'] = $validated['quiz_type'] ?? 'regular';
-        }
-
-        $quiz = Quiz::create($createData);
+            'lesson_id'       => $validated['lesson_id'] ?? null,
+            'quiz_type'       => $validated['quiz_type'] ?? 'regular',
+        ]);
 
         return response()->json([
-            'id' => $quiz->id,
-            'title' => $quiz->title,
-            'description' => $quiz->description,
+            'id'             => $quiz->id,
+            'title'          => $quiz->title,
+            'description'    => $quiz->description,
             'pass_percentage' => $quiz->pass_percentage,
-            'course_id'       => $quiz->course_id,
-            'module_id'       => $quiz->module_id,
-            'lesson_id'       => $quiz->lesson_id,
-            'quiz_type'       => $quiz->quiz_type,
-            'question_count'  => 0,
-            'created_at'      => $quiz->created_at,
+            'course_id'      => $quiz->course_id,
+            'module_id'      => $quiz->module_id,
+            'lesson_id'      => $quiz->lesson_id,
+            'quiz_type'      => $quiz->quiz_type,
+            'question_count' => 0,
+            'created_at'     => $quiz->created_at,
         ], 201);
     }
 
