@@ -3,6 +3,14 @@ import { useToast } from '../../components/ToastProvider';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { MessageSquare, BookOpen, Users, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import {
+  DarkChartTooltip,
+  darkTooltipStyle,
+  darkTooltipLabelStyle,
+  darkTooltipItemStyle,
+  darkTooltipWrapperStyle,
+  darkTooltipCursor,
+} from '../../utils/chartTooltip';
 import { UserTimeLog } from '../../components/UserTimeLog';
 import { actionButtonClasses, statIconContainerClasses, statIconGlyphClasses } from '../../utils/uiPalette';
 
@@ -175,7 +183,15 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} />
                   <YAxis axisLine={false} tickLine={false} />
-                  <Tooltip />
+                  <Tooltip
+                    content={<DarkChartTooltip />}
+                    cursor={{ stroke: 'rgba(148, 163, 184, 0.35)', strokeWidth: 1 }}
+                    wrapperStyle={darkTooltipWrapperStyle}
+                    contentStyle={darkTooltipStyle}
+                    labelStyle={darkTooltipLabelStyle}
+                    itemStyle={darkTooltipItemStyle}
+                    separator=" : "
+                  />
                   <Legend />
                   <Line type="monotone" dataKey="avgScore" stroke="#22c55e" strokeWidth={2} name="Avg Score (%)" />
                   <Line type="monotone" dataKey="submissions" stroke="#3b82f6" strokeWidth={2} name="Submissions" />
@@ -205,18 +221,13 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps) {
                     width={50}
                   />
                   <Tooltip
-                    cursor={{ fill: 'rgba(59, 130, 246, 0.2)' }}
-                    contentStyle={{
-                      background: '#1a2332',
-                      border: '2px solid #64748b',
-                      borderRadius: '12px',
-                      boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
-                      padding: '16px 20px',
-                    }}
-                    labelStyle={{ color: '#fef08a', fontWeight: 800, marginBottom: 10, fontSize: 14 }}
-                    itemStyle={{ color: '#84cc16', fontSize: 14, padding: '5px 0', fontWeight: 600 }}
+                    content={<DarkChartTooltip />}
+                    cursor={darkTooltipCursor}
+                    wrapperStyle={darkTooltipWrapperStyle}
+                    contentStyle={darkTooltipStyle}
+                    labelStyle={darkTooltipLabelStyle}
+                    itemStyle={darkTooltipItemStyle}
                     separator=" : "
-                    wrapperStyle={{ outline: 'none', backgroundColor: '#0f172a' }}
                   />
                   <Legend
                     wrapperStyle={{ paddingTop: 16, fontSize: 14, color: '#cbd5e1' }}

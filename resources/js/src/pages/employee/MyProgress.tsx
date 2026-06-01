@@ -14,6 +14,13 @@ import {
 import { Clock, Award, CheckCircle, Loader } from 'lucide-react';
 
 import { actionButtonClasses, chartColors, popularCourseColors } from '../../utils/uiPalette';
+import {
+  darkTooltipStyle,
+  darkTooltipLabelStyle,
+  darkTooltipItemStyle,
+  darkTooltipWrapperStyle,
+  darkTooltipCursor,
+} from '../../utils/chartTooltip';
 
 const API_BASE = '/api';
 
@@ -81,6 +88,57 @@ export function MyProgress() {
   const { summary, course_status, weekly_activity, quiz_history } = data;
   const hasQuizHistory = quiz_history.length > 0;
   const hasCourseData  = course_status.some(s => s.value > 0);
+  const chartTooltipLabelClass = 'text-xs font-medium text-slate-300';
+
+  const renderCourseStatusTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+
+    const entry = payload[0];
+    const segmentName = entry?.name ?? entry?.payload?.name ?? 'Status';
+    const value = Number(entry?.value ?? 0);
+    const color = entry?.color ?? '#22c55e';
+
+    return (
+      <div style={darkTooltipStyle}>
+        <p className={chartTooltipLabelClass}>{segmentName}</p>
+        <p className="text-sm font-semibold" style={{ color }}>
+          {value} Course{value === 1 ? '' : 's'}
+        </p>
+      </div>
+    );
+  };
+
+  const renderWeeklyTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+
+    const value = Number(payload[0]?.value ?? 0);
+    const color = payload[0]?.color ?? '#22c55e';
+
+    return (
+      <div style={darkTooltipStyle}>
+        <p className={chartTooltipLabelClass}>{label}</p>
+        <p className="text-sm font-semibold" style={{ color }}>
+          Activity: {value}
+        </p>
+      </div>
+    );
+  };
+
+  const renderQuizTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+
+    const value = Number(payload[0]?.value ?? 0);
+    const color = payload[0]?.color ?? '#3b82f6';
+
+    return (
+      <div style={darkTooltipStyle}>
+        <p className={chartTooltipLabelClass}>{label}</p>
+        <p className="text-sm font-semibold" style={{ color }}>
+          Score: {value}%
+        </p>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -143,7 +201,14 @@ export function MyProgress() {
                         <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(val: number) => [val, 'Courses']} />
+                    <Tooltip
+                      content={renderCourseStatusTooltip}
+                      cursor={false}
+                      wrapperStyle={{ outline: 'none', zIndex: 50 }}
+                      contentStyle={darkTooltipStyle}
+                      labelStyle={darkTooltipLabelStyle}
+                      itemStyle={darkTooltipItemStyle}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -173,7 +238,14 @@ export function MyProgress() {
                 <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip formatter={(val: number) => [val, 'Activity']} cursor={{ fill: 'rgba(46, 168, 95, 0.08)' }} />
+                <Tooltip
+                  content={renderWeeklyTooltip}
+                  cursor={{ fill: 'rgba(46, 168, 95, 0.08)' }}
+                  wrapperStyle={{ outline: 'none', zIndex: 50 }}
+                  contentStyle={darkTooltipStyle}
+                  labelStyle={darkTooltipLabelStyle}
+                  itemStyle={darkTooltipItemStyle}
+                />
                 <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Activity">
                   {weekly_activity.map((_, index) => (
                     <Cell key={index} fill={popularCourseColors[index % popularCourseColors.length]} />
@@ -201,7 +273,14 @@ export function MyProgress() {
                     tickLine={false}
                     tick={{ fontSize: 12 }}
                   />
-                  <Tooltip formatter={(val: number) => [`${val}%`, 'Score']} />
+                  <Tooltip
+                    content={renderQuizTooltip}
+                    cursor={{ fill: 'rgba(46, 168, 95, 0.08)' }}
+                    wrapperStyle={{ outline: 'none', zIndex: 50 }}
+                    contentStyle={darkTooltipStyle}
+                    labelStyle={darkTooltipLabelStyle}
+                    itemStyle={darkTooltipItemStyle}
+                  />
                   <Bar dataKey="score" radius={[0, 4, 4, 0]} barSize={20} name="Score (%)">
                     {quiz_history.map((entry, index) => (
                       <Cell
