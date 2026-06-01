@@ -326,7 +326,9 @@ class CourseController extends Controller
             if (! empty($validated['modules'])) {
                 foreach ($validated['modules'] as $module) {
                     if (isset($module['content']) && $module['content'] instanceof \Illuminate\Http\UploadedFile) {
-                        $filePath = $module['content']->store('course-content', 'public');
+                        $uploadedMod = $module['content'];
+                        $modExt = strtolower($uploadedMod->getClientOriginalExtension());
+                        $filePath = $uploadedMod->storeAs('course-content', \Illuminate\Support\Str::random(40).($modExt ? '.'.$modExt : ''), 'public');
                         $course->modules()->create([
                             'title' => $module['title'] ?? 'Untitled Module',
                             'content_path' => $filePath,
@@ -446,7 +448,9 @@ class CourseController extends Controller
             if (! empty($validated['modules'])) {
                 foreach ($validated['modules'] as $module) {
                     if (isset($module['content']) && $module['content'] instanceof \Illuminate\Http\UploadedFile) {
-                        $filePath = $module['content']->store('course-content', 'public');
+                        $uploadedMod = $module['content'];
+                        $modExt = strtolower($uploadedMod->getClientOriginalExtension());
+                        $filePath = $uploadedMod->storeAs('course-content', \Illuminate\Support\Str::random(40).($modExt ? '.'.$modExt : ''), 'public');
                         $course->modules()->create([
                             'title' => $module['title'] ?? 'Untitled Module',
                             'content_path' => $filePath,
@@ -526,7 +530,9 @@ class CourseController extends Controller
         ];
 
         if ($request->hasFile('content')) {
-            $data['content_path'] = $request->file('content')->store('course-content', 'public');
+            $uploadedFile = $request->file('content');
+            $ext = strtolower($uploadedFile->getClientOriginalExtension());
+            $data['content_path'] = $uploadedFile->storeAs('course-content', \Illuminate\Support\Str::random(40).($ext ? '.'.$ext : ''), 'public');
         }
 
         $module = $course->modules()->create($data);
@@ -637,7 +643,10 @@ class CourseController extends Controller
         if ($request->filled('content_url')) {
             $data['content_path'] = $request->input('content_url');
         } elseif ($request->hasFile('content')) {
-            $data['content_path'] = $request->file('content')->store('course-content', 'public');
+            $uploadedFile = $request->file('content');
+            $ext = strtolower($uploadedFile->getClientOriginalExtension());
+            $filename = \Illuminate\Support\Str::random(40).($ext ? '.'.$ext : '');
+            $data['content_path'] = $uploadedFile->storeAs('course-content', $filename, 'public');
         }
 
         if ($request->filled('type')) {
@@ -795,12 +804,11 @@ class CourseController extends Controller
             if ($lesson->content_path && ! preg_match('#^https?://#i', $lesson->content_path)) {
                 Storage::disk('public')->delete($lesson->content_path);
             }
-            $lesson->content_path = $request->file('content')->store('course-content', 'public');
+            $uploadedFile = $request->file('content');
+            $ext = strtolower($uploadedFile->getClientOriginalExtension());
+            $filename = \Illuminate\Support\Str::random(40).($ext ? '.'.$ext : '');
+            $lesson->content_path = $uploadedFile->storeAs('course-content', $filename, 'public');
         }
-
-        $lesson->save();
-
-        return response()->json(['message' => 'Lesson updated', 'lesson' => $lesson->fresh()]);
     }
 
     /**

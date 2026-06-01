@@ -166,7 +166,8 @@ class ContentController extends Controller
         } else {
             if ($request->hasFile('content')) {
                 $file = $request->file('content');
-                $contentPath = $file->store('lessons', 'public');
+                $ext = strtolower($file->getClientOriginalExtension());
+                $contentPath = $file->storeAs('lessons', \Illuminate\Support\Str::random(40).($ext ? '.'.$ext : ''), 'public');
                 $bytes = $file->getSize();
                 $fileSize = $this->formatBytes($bytes);
 
@@ -234,7 +235,8 @@ class ContentController extends Controller
                 Storage::disk('public')->delete($lesson->content_path);
             }
             $file = $request->file('content');
-            $lesson->content_path = $file->store('lessons', 'public');
+            $ext = strtolower($file->getClientOriginalExtension());
+            $lesson->content_path = $file->storeAs('lessons', \Illuminate\Support\Str::random(40).($ext ? '.'.$ext : ''), 'public');
             $bytes = $file->getSize();
             $lesson->file_size = $this->formatBytes($bytes);
 
